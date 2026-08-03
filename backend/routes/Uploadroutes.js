@@ -5,7 +5,7 @@ const path = require('path');
 const fs = require('fs');
 
 // Carpeta destino de las imágenes
-const UPLOADS_DIR = path.join(__dirname, '../../frontend/public/productos');
+const UPLOADS_DIR = process.env.UPLOADS_DIR || '/app/uploads_publicos';
 
 // Si la carpeta no existe, la crea automáticamente
 if (!fs.existsSync(UPLOADS_DIR)) {

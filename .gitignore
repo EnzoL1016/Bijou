@@ -1,0 +1,50 @@
+# Environment Variables
+.env
+.env.*
+!.env.example
+*.env
+
+# Dependencies
+node_modules/
+/.pnp
+.pnp.js
+
+# Production / Build output
+build/
+dist/
+out/
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Testing & Coverage
+coverage/
+.nyc_output
+
+# Editor & IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*.sublime-workspace
+*.sublime-project
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Caches & Temporary
+.cache/
+.eslintcache
+.parcel-cache/
+.turbo/

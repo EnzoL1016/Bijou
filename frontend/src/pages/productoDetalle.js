@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
+const API = process.env.REACT_APP_API_URL || '/api';
+
 function ProductoDetalle({ agregarAlCarrito }) {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -24,7 +26,7 @@ function ProductoDetalle({ agregarAlCarrito }) {
     producto.variantes.filter(v => v !== 'Única').length > 0;
 
   useEffect(() => {
-    axios.get(`http://localhost:3000/productos/${id}`)
+    axios.get(`${API}/productos/${id}`)
       .then(res => {
         setProducto(res.data);
         const varsReales = (res.data.variantes || []).filter(v => v !== 'Única');

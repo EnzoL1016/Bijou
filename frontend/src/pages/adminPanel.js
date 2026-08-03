@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import AdminProductoForm from './adminProductoForm';
 
-const API = 'http://localhost:3000';
+const API = process.env.REACT_APP_API_URL || '/api';
 const E = { // estilos compartidos
   pagina:   { minHeight: '100vh', background: '#f5f5f5', padding: '30px', fontFamily: 'Segoe UI, sans-serif' },
   header:   { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' },

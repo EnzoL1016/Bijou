@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import ProductCard from '../components/ProductCard';
 import ModalDetalle from '../components/ModalDetalle';
 
-const API = process.env.REACT_APP_API_URL || 'http://localhost:3000';
+const API = process.env.REACT_APP_API_URL || '/api';
 
 const slides = [
   {
