@@ -323,7 +323,7 @@ body {
    ============================================ */
 .productos-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 24px; position: relative; z-index: 1; }
 
-.producto-card { background: var(--blanco); border-radius: 20px; overflow: hidden; position: relative; transition: transform 0.22s ease, box-shadow 0.22s ease; cursor: pointer; }
+.producto-card { background: var(--blanco); border-radius: 20px; overflow: hidden; position: relative; transition: transform 0.22s ease, box-shadow 0.22s ease; cursor: pointer; display: flex; flex-direction: column; height: 100%; }
 .producto-card:nth-child(6n+1) { border: 2.5px solid var(--sky);    box-shadow: 0 6px 0px var(--sky); }
 .producto-card:nth-child(6n+2) { border: 2.5px solid var(--pink);   box-shadow: 0 6px 0px var(--pink); }
 .producto-card:nth-child(6n+3) { border: 2.5px solid var(--yellow); box-shadow: 0 6px 0px var(--yellow); }
@@ -337,24 +337,25 @@ body {
 .producto-card:nth-child(6n+5):hover { transform: translateY(-4px); box-shadow: 0 10px 0px var(--lila); }
 .producto-card:nth-child(6n+0):hover { transform: translateY(-4px); box-shadow: 0 10px 0px var(--peach); }
 
-.image-container { position: relative; height: 230px; overflow: hidden; }
-.producto-card:nth-child(6n+1) .image-container { background: var(--sky-bg); }
-.producto-card:nth-child(6n+2) .image-container { background: var(--pink-bg); }
-.producto-card:nth-child(6n+3) .image-container { background: var(--yellow-bg); }
-.producto-card:nth-child(6n+4) .image-container { background: var(--mint-bg); }
-.producto-card:nth-child(6n+5) .image-container { background: var(--lila-bg); }
-.producto-card:nth-child(6n+0) .image-container { background: var(--peach-bg); }
+.image-container {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  background: var(--blanco);
+  border-bottom: 1.5px solid var(--borde);
+}
 
-.image-container::before { content: ''; position: absolute; width: 120px; height: 120px; border-radius: 50%; opacity: 0.3; bottom: -30px; right: -20px; z-index: 0; transition: transform 0.4s ease; }
-.producto-card:nth-child(6n+1) .image-container::before { background: var(--sky); }
-.producto-card:nth-child(6n+2) .image-container::before { background: var(--pink); }
-.producto-card:nth-child(6n+3) .image-container::before { background: var(--yellow); }
-.producto-card:nth-child(6n+4) .image-container::before { background: var(--mint); }
-.producto-card:nth-child(6n+5) .image-container::before { background: var(--lila); }
-.producto-card:nth-child(6n+0) .image-container::before { background: var(--peach); }
-.producto-card:hover .image-container::before { transform: scale(1.3); }
-
-.product-img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.45s ease; position: relative; z-index: 1; }
+.product-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  transition: transform 0.45s ease;
+  position: relative;
+  z-index: 1;
+  display: block;
+}
 .producto-card:hover .product-img { transform: scale(1.05); }
 
 .cartel-exito-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(187,247,208,0.95); display: flex; justify-content: center; align-items: center; z-index: 20; animation: fadeIn 0.3s ease; }
@@ -362,7 +363,7 @@ body {
 .contenido-exito span { font-size: 1.8rem; display: block; margin-bottom: 6px; }
 .contenido-exito p { font-family: 'Nunito', sans-serif; font-size: 0.75rem; font-weight: 900; letter-spacing: 1.5px; text-transform: uppercase; color: var(--mint-dark); margin: 0; }
 
-.info-resumen { padding: 16px 18px 20px; }
+.info-resumen { padding: 16px 18px 20px; display: flex; flex-direction: column; flex: 1; justify-content: space-between; }
 .info-resumen h3 { font-family: 'Nunito', sans-serif; font-size: 1rem; font-weight: 800; color: var(--negro); margin-bottom: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .precio { font-family: 'Nunito', sans-serif; font-size: 1.15rem; font-weight: 900; color: var(--negro); }
 

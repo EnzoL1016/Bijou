@@ -19,13 +19,21 @@ router.get('/venta/:idVenta', getEstadoVenta);
 router.patch('/confirmar-transferencia/:idVenta', verifyToken, confirmarTransferencia);
 router.patch('/ventas/:idVenta/seguimiento', verifyToken, cargarSeguimiento);
 
-// Listar ventas (admin)
+// Listar ventas (admin) con sus items
 router.get('/ventas', verifyToken, async (req, res) => {
   try {
     const db = require('../config/db');
     const [ventas] = await db.query('SELECT * FROM ventas ORDER BY creado_en DESC');
-    res.json(ventas);
+    const [detalles] = await db.query('SELECT * FROM detalle_ventas');
+    
+    const ventasConItems = ventas.map(v => ({
+      ...v,
+      items: detalles.filter(d => d.id_venta === v.id),
+    }));
+
+    res.json(ventasConItems);
   } catch (err) {
+    console.error('Error al obtener ventas:', err);
     res.status(500).json({ error: 'Error al obtener ventas' });
   }
 });

@@ -13,18 +13,25 @@ async function getVentaConItems(idVenta, conn) {
   return { venta, items };
 }
 
+// Ensure column exists on db connect / start
+async function asegurarColumnas() {
+  try {
+    await db.query(`ALTER TABLE ventas ADD COLUMN IF NOT EXISTS telefono_comprador VARCHAR(50)`);
+  } catch (e) {
+    // Catch if already exists or version doesn't support IF NOT EXISTS
+  }
+}
+asegurarColumnas();
+
 // ── 1. Iniciar checkout ───────────────────────────────────────────────────────
 // POST /checkout/iniciar
-// Body: { nombre_comprador, email_comprador, codigo_postal, direccion,
-//         ciudad, provincia, metodo_pago, items: [{id_variante, cantidad,
-//         precio_unitario, nombre_producto, nombre_variante}] }
 const iniciarCheckout = async (req, res) => {
   const conn = await db.getConnection();
   try {
     await conn.beginTransaction();
 
     const {
-      nombre_comprador, email_comprador, codigo_postal,
+      nombre_comprador, telefono_comprador, email_comprador, codigo_postal,
       direccion, ciudad, provincia, metodo_pago, items,
     } = req.body;
 
@@ -35,7 +42,7 @@ const iniciarCheckout = async (req, res) => {
     if (!items || items.length === 0) {
       return res.status(400).json({ error: 'El carrito está vacío' });
     }
-    if (!['mercadopago', 'transferencia'].includes(metodo_pago)) {
+    if (!['mercadopago', 'transferencia', 'retiro_en_persona'].includes(metodo_pago)) {
       return res.status(400).json({ error: 'Método de pago inválido' });
     }
 
@@ -57,15 +64,16 @@ const iniciarCheckout = async (req, res) => {
 
     // Calcular total
     const total = items.reduce((acc, item) => acc + item.precio_unitario * item.cantidad, 0);
+    const transportista = req.body.transportista || req.body.envio?.modalidad || req.body.envio?.transportista || 'Correo Argentino';
 
     // Crear venta
     const [result] = await conn.query(
       `INSERT INTO ventas 
-        (total, estado, nombre_comprador, email_comprador, codigo_postal,
-         direccion, ciudad, provincia, metodo_pago, estado_pago)
-       VALUES (?, 'pendiente', ?, ?, ?, ?, ?, ?, ?, 'pendiente')`,
-      [total, nombre_comprador, email_comprador, codigo_postal,
-       direccion, ciudad, provincia, metodo_pago]
+        (total, estado, nombre_comprador, telefono_comprador, email_comprador, codigo_postal,
+         direccion, ciudad, provincia, metodo_pago, estado_pago, transportista)
+       VALUES (?, 'pendiente', ?, ?, ?, ?, ?, ?, ?, ?, 'pendiente', ?)`,
+      [total, nombre_comprador, telefono_comprador || '', email_comprador, codigo_postal,
+       direccion, ciudad, provincia, metodo_pago, transportista]
     );
     const idVenta = result.insertId;
 
@@ -91,52 +99,15 @@ const iniciarCheckout = async (req, res) => {
     const { venta, items: itemsDB } = await getVentaConItems(idVenta);
     enviarAvisoAdmin({ venta, items: itemsDB }).catch(e => console.error('Email admin error:', e));
 
-    // ── Flujo según método de pago ────────────────────────────────────────────
-
     if (metodo_pago === 'transferencia') {
-      // Mandar confirmación al cliente de inmediato
       enviarConfirmacionCliente({ venta, items: itemsDB }).catch(e => console.error('Email cliente error:', e));
-      return res.json({
-        ok: true,
-        metodo_pago: 'transferencia',
-        id_venta: idVenta,
-        mensaje: 'Pedido registrado. Realizá la transferencia con los datos enviados por email.',
-      });
     }
-
-    // MercadoPago → crear preferencia
-    const preference = new Preference(mpClient);
-    const mpItems = items.map(item => ({
-      title: `${item.nombre_producto}${item.nombre_variante && item.nombre_variante !== 'Única' ? ` - ${item.nombre_variante}` : ''}`,
-      quantity: item.cantidad,
-      unit_price: item.precio_unitario,
-      currency_id: 'ARS',
-    }));
-
-    const prefData = await preference.create({
-      body: {
-        items: mpItems,
-        payer: { name: nombre_comprador, email: email_comprador },
-        back_urls: {
-          success: `${process.env.FRONTEND_URL}/compra-exitosa?id=${idVenta}`,
-          failure: `${process.env.FRONTEND_URL}/compra-error?id=${idVenta}`,
-          pending: `${process.env.FRONTEND_URL}/compra-exitosa?id=${idVenta}&pending=true`,
-        },
-        auto_return: 'approved',
-        external_reference: String(idVenta),
-        notification_url: `${process.env.BACKEND_URL}/checkout/mp-webhook`,
-      },
-    });
-
-    // Guardar preference id
-    await db.query('UPDATE ventas SET id_pago_mp = ? WHERE id = ?', [prefData.id, idVenta]);
 
     return res.json({
       ok: true,
-      metodo_pago: 'mercadopago',
+      metodo_pago,
       id_venta: idVenta,
-      mp_init_point: prefData.init_point,     // URL de pago real
-      mp_sandbox_init_point: prefData.sandbox_init_point, // URL de prueba
+      mensaje: 'Pedido registrado correctamente.',
     });
 
   } catch (err) {

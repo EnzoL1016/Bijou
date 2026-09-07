@@ -7,6 +7,7 @@ import ModalDetalle from '../components/ModalDetalle';
 const API = process.env.REACT_APP_API_URL || '/api';
 
 const CATEGORIAS_MAP = {
+  'todo':                   { query: '',                 titulo: 'Catálogo Completo',  subtitulo: 'Todos nuestros accesorios artesanales' },
   'novedades':              { query: 'Novedades',        titulo: 'Novedades',          subtitulo: 'Lo último que llegó' },
   'pulseras':               { query: 'Pulseras',         titulo: 'Pulseras',            subtitulo: 'Todas nuestras pulseras' },
   'pulseras/hilo-encerado': { query: 'Hilo encerado',    titulo: 'Pulseras de hilo',    subtitulo: 'Hilo encerado artesanal' },
@@ -46,11 +47,12 @@ export default function Categoria({ agregarAlCarrito }) {
 
   useEffect(() => {
     setLoading(true);
-    fetch(`${API}/productos?categoria=${encodeURIComponent(info.query)}`)
+    const url = info.query ? `${API}/productos?categoria=${encodeURIComponent(info.query)}` : `${API}/productos`;
+    fetch(url)
       .then(r => r.json())
       .then(data => { setProductos(Array.isArray(data) ? data : []); setLoading(false); })
       .catch(() => setLoading(false));
-  }, [location.pathname]);
+  }, [location.pathname, info.query]);
 
   const manejarAgregar = (prod) => {
     const tieneVariantes = prod.variantes?.filter(v => v !== 'Única').length > 0;

@@ -94,10 +94,6 @@ function CarritoDetalle({ carrito, actualizarCantidad, eliminarDelCarrito }) {
               <span>Subtotal</span>
               <span>${totalDinamico.toLocaleString()}</span>
             </div>
-            <div className="resumen-linea">
-              <span>Envío</span>
-              <span className="resumen-envio">A calcular</span>
-            </div>
 
             <div className="resumen-total">
               <span>Total</span>
@@ -114,15 +110,6 @@ function CarritoDetalle({ carrito, actualizarCantidad, eliminarDelCarrito }) {
             <button className="btn-carrito-secondary btn-full" onClick={() => navigate('/')}>
               Seguir comprando
             </button>
-
-            <div className="resumen-trust">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
-                stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-                <path d="M7 11V7a5 5 0 0110 0v4"/>
-              </svg>
-              Pago 100% seguro
-            </div>
           </div>
 
         </div>

@@ -35,7 +35,7 @@ services:
     build: ./frontend
     restart: unless-stopped
     ports:
-      - "80:80"
+      - "${FRONTEND_PORT:-8080}:80"
     volumes:
       - productos_uploads:/usr/share/nginx/html/productos
     depends_on:

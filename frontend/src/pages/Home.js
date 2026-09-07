@@ -139,12 +139,6 @@ function Home({ agregarAlCarrito, busqueda }) {
   const prodColecciones = productos.filter(p => tieneCategoria(p, 'Colecciones')).slice(0, 4);
   const prodTodo        = productos.slice(0, 4); // muestra los primeros 4 de todo el catálogo
 
-  const SECCIONES_DATA = [
-    { key: 'novedades',   titulo: 'Novedades',   sub: 'Lo último que llegó',       path: '/novedades',   items: prodNovedades   },
-    { key: 'colecciones', titulo: 'Colecciones', sub: 'Nuestras piezas favoritas', path: '/colecciones', items: prodColecciones },
-    { key: 'todo',        titulo: 'Todo',        sub: 'Explorá todo el catálogo',  path: '/novedades',   items: prodTodo        },
-  ];
-
   return (
     <>
       {busqueda ? (
@@ -223,9 +217,9 @@ function Home({ agregarAlCarrito, busqueda }) {
             </div>
             <div className="trust-item">
               <div className="trust-icon-wrap">
-                <svg viewBox="0 0 24 24"><rect x="1" y="4" width="22" height="16" rx="2" /><line x1="1" y1="10" x2="23" y2="10" /></svg>
+                <svg viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
               </div>
-              <div className="trust-texto"><strong>Pagá en cuotas</strong><span>Todas las tarjetas</span></div>
+              <div className="trust-texto"><strong>Sin mínimo de compra</strong><span>Llevá lo que quieras</span></div>
             </div>
             <div className="trust-item">
               <div className="trust-icon-wrap">
@@ -264,7 +258,7 @@ function Home({ agregarAlCarrito, busqueda }) {
                   <p>Explorá todo el catálogo</p>
                 </div>
                 <div className="seccion-linea"></div>
-                <Link to="/novedades" className="seccion-ver-mas">Ver todo →</Link>
+                <Link to="/todo" className="seccion-ver-mas">Ver todo →</Link>
               </div>
               <div className="productos-grid">
                 {prodTodo.map((p, i) => (

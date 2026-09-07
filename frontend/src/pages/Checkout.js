@@ -56,7 +56,7 @@ function ProblemasStock({ problemas, navigate }) {
   );
 }
 
-function ResumenPedido({ carrito, total, paso, form }) {
+function ResumenPedido({ carrito, total, paso, form, envioSeleccionado, sucursalCorreo }) {
   return (
     <div className="checkout-resumen-col">
       <div className="checkout-resumen">
@@ -76,29 +76,78 @@ function ResumenPedido({ carrito, total, paso, form }) {
           ))}
         </div>
         <div className="checkout-resumen-total">
-          <span>Total</span>
+          <span>Subtotal</span>
           <span>${total.toLocaleString('es-AR')}</span>
         </div>
         <div className="checkout-resumen-envio">
           <span>Envío</span>
-          <span style={{ fontSize: 13, color: '#6b7280' }}>Se calcula por zona</span>
+          <span style={{ fontSize: 13, color: '#6b7280', fontWeight: 700 }}>
+            {envioSeleccionado
+              ? (envioSeleccionado.id === 'retiro_villa_mercedes' ? 'Sin costo (Villa Mercedes)' : envioSeleccionado.nombre)
+              : 'Seleccionar en el paso 2'}
+          </span>
         </div>
       </div>
 
-      {paso === 3 && (
+      {(paso === 3 || envioSeleccionado?.id === 'retiro_villa_mercedes') && form.nombre_comprador && (
         <div className="checkout-datos-resumen">
-          <p className="checkout-datos-titulo">Envío a</p>
-          <p>{form.nombre_comprador}</p>
-          <p>{form.direccion}</p>
-          <p>{form.ciudad}, {form.provincia} ({form.codigo_postal})</p>
-          <p>{form.email_comprador}</p>
+          <p className="checkout-datos-titulo">Datos del comprador</p>
+          <p><strong>{form.nombre_comprador}</strong></p>
+          {form.telefono_comprador && <p>📱 {form.telefono_comprador}</p>}
+          <p>✉️ {form.email_comprador}</p>
+          
+          {envioSeleccionado?.id === 'correo_domicilio' && (
+            <>
+              <p style={{ marginTop: 8 }}>📍 <strong>Entrega en domicilio:</strong></p>
+              <p>{form.direccion}</p>
+              <p>{form.ciudad}, {form.provincia} ({form.codigo_postal})</p>
+            </>
+          )}
+
+          {envioSeleccionado?.id === 'correo_sucursal' && (
+            <>
+              <p style={{ marginTop: 8 }}>🏢 <strong>Retiro en sucursal:</strong></p>
+              <p>{sucursalCorreo || 'A especificar'}</p>
+              <p>{form.ciudad}, {form.provincia} ({form.codigo_postal})</p>
+            </>
+          )}
+
+          {envioSeleccionado?.id === 'retiro_villa_mercedes' && (
+            <p style={{ marginTop: 8, color: 'var(--lila-dark)', fontWeight: 700 }}>
+              📍 Retiro en persona por Villa Mercedes, San Luis
+            </p>
+          )}
         </div>
       )}
     </div>
   );
 }
 
-// ── Componente principal ──────────────────────────────────────────────────────
+// ── Opciones de Envío ─────────────────────────────────────────────────────────
+
+const OPCIONES_ENVIO = [
+  {
+    id: 'correo_domicilio',
+    transportista: 'Correo Argentino',
+    nombre: 'Correo Argentino - Entrega a domicilio',
+    desc: 'PAQ. AR Clásico / Expreso con entrega en tu domicilio.',
+    emoji: '🏡',
+  },
+  {
+    id: 'correo_sucursal',
+    transportista: 'Correo Argentino',
+    nombre: 'Correo Argentino - Retiro en sucursal',
+    desc: 'Retiro por la sucursal de Correo Argentino que elijas en tu localidad.',
+    emoji: '🏢',
+  },
+  {
+    id: 'retiro_villa_mercedes',
+    transportista: 'Retiro en persona',
+    nombre: 'Retiro en persona (Villa Mercedes, SL)',
+    desc: 'Sin costo de envío. Acordamos retiro por domicilio o punto de encuentro. Abonás al recibir.',
+    emoji: '📍',
+  },
+];
 
 export default function Checkout({ carrito, setCarrito }) {
   const navigate = useNavigate();
@@ -108,20 +157,17 @@ export default function Checkout({ carrito, setCarrito }) {
   const [verificandoStock, setVerificandoStock] = useState(true);
   const [problemasStock, setProblemasStock]     = useState([]);
   const [form, setForm] = useState({
-    nombre_comprador: '', email_comprador: '', direccion: '',
+    nombre_comprador: '', telefono_comprador: '', email_comprador: '', direccion: '',
     ciudad: '', provincia: '', codigo_postal: '', metodo_pago: '',
   });
+  const [sucursalCorreo, setSucursalCorreo] = useState('');
   const [errores, setErrores] = useState({});
 
-  // Envío
-  const [envioOpciones, setEnvioOpciones] = useState(null);   // resultado de la API
-  const [envioSeleccionado, setEnvioSeleccionado] = useState(null); // { transportista, nombre, precio }
-  const [loadingEnvio, setLoadingEnvio] = useState(false);
-  const [errorEnvio, setErrorEnvio] = useState('');
+  // Envío seleccionado
+  const [envioSeleccionado, setEnvioSeleccionado] = useState(null);
 
   const subtotal = carrito.reduce((acc, item) => acc + item.precio * item.cantidad, 0);
-  const costoEnvio = envioSeleccionado ? envioSeleccionado.precio : 0;
-  const total = subtotal + costoEnvio;
+  const total = subtotal;
 
   // Verificar stock
   useEffect(() => {
@@ -148,39 +194,17 @@ export default function Checkout({ carrito, setCarrito }) {
       finally { setVerificandoStock(false); }
     };
     verificar();
-  }, []);
+  }, [carrito]);
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
     setErrores({ ...errores, [e.target.name]: '' });
   };
 
-  const calcularEnvio = async () => {
-    setLoadingEnvio(true);
-    setErrorEnvio('');
-    setEnvioOpciones(null);
-    setEnvioSeleccionado(null);
-    try {
-      const items = carrito.map(item => ({
-        nombre: item.nombre,
-        categorias: item.categorias || [],
-        cantidad: item.cantidad,
-      }));
-      const res = await fetch(`${API}/envios/calcular`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ codigoPostal: form.codigo_postal, items }),
-      });
-      const data = await res.json();
-      if (!res.ok) { setErrorEnvio(data.error || 'Error calculando envío'); return; }
-      setEnvioOpciones(data);
-    } catch { setErrorEnvio('Error de conexión. Intentá de nuevo.'); }
-    finally { setLoadingEnvio(false); }
-  };
-
   const validarPaso1 = () => {
     const e = {};
     if (!form.nombre_comprador.trim()) e.nombre_comprador = 'Ingresá tu nombre';
+    if (!form.telefono_comprador.trim()) e.telefono_comprador = 'Ingresá tu número de teléfono / WhatsApp';
     if (!form.email_comprador.trim() || !/\S+@\S+\.\S+/.test(form.email_comprador)) e.email_comprador = 'Email inválido';
     if (!form.direccion.trim()) e.direccion = 'Ingresá tu dirección';
     if (!form.ciudad.trim()) e.ciudad = 'Ingresá tu ciudad';
@@ -190,38 +214,69 @@ export default function Checkout({ carrito, setCarrito }) {
     return Object.keys(e).length === 0;
   };
 
-  const handleConfirmar = async () => {
-    if (!form.metodo_pago) { setErrores({ metodo_pago: 'Seleccioná un método de pago' }); return; }
-    setLoading(true); setError('');
+  const handleConfirmarPedido = async (metodoPagoOverride = null) => {
+    const metodoElegido = metodoPagoOverride || form.metodo_pago;
+    if (!metodoElegido) {
+      setErrores({ metodo_pago: 'Seleccioná cómo preferís abonar' });
+      return;
+    }
+
+    setLoading(true);
+    setError('');
     try {
       const items = carrito.map(item => ({
-        id_variante: item.idVariante, cantidad: item.cantidad,
-        precio_unitario: item.precio, nombre_producto: item.nombre,
+        id_variante: item.idVariante,
+        cantidad: item.cantidad,
+        precio_unitario: item.precio,
+        nombre_producto: item.nombre,
         nombre_variante: item.varianteSeleccionada || 'Única',
       }));
+
+      // Determinar detalles del envío
+      let transportistaFinal = 'Correo Argentino';
+      let direccionFinal = form.direccion;
+
+      if (envioSeleccionado?.id === 'retiro_villa_mercedes') {
+        transportistaFinal = 'Retiro en persona (Villa Mercedes)';
+      } else if (envioSeleccionado?.id === 'correo_sucursal') {
+        transportistaFinal = 'Correo Argentino - Retiro en sucursal';
+        direccionFinal = `Sucursal Correo: ${sucursalCorreo} | Domicilio legal: ${form.direccion}`;
+      } else if (envioSeleccionado?.id === 'correo_domicilio') {
+        transportistaFinal = 'Correo Argentino - Entrega a domicilio';
+      }
+
       const res = await fetch(`${API}/checkout/iniciar`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...form,
+          direccion: direccionFinal,
+          metodo_pago: metodoElegido,
           items,
-          envio: envioSeleccionado ? {
-            transportista: envioSeleccionado.transportista,
-            modalidad: envioSeleccionado.nombre,
-            costo: envioSeleccionado.precio,
-          } : null,
+          transportista: transportistaFinal,
+          sucursal_correo: sucursalCorreo,
+          envio: {
+            transportista: envioSeleccionado?.transportista || 'Correo Argentino',
+            modalidad: transportistaFinal,
+            sucursal: sucursalCorreo,
+          },
         }),
       });
+
       const data = await res.json();
-      if (!res.ok) { setError(data.error || 'Hubo un error al procesar tu pedido'); return; }
-      setCarrito([]);
-      if (form.metodo_pago === 'mercadopago') {
-        window.location.href = data.mp_sandbox_init_point || data.mp_init_point;
-      } else {
-        navigate(`/compra-exitosa?id=${data.id_venta}&metodo=transferencia`);
+      if (!res.ok) {
+        setError(data.error || 'Hubo un error al procesar tu pedido');
+        return;
       }
-    } catch { setError('Error de conexión. Intentá de nuevo.'); }
-    finally { setLoading(false); }
+
+      // Limpiar carrito y redirigir directamente a la página de éxito
+      setCarrito([]);
+      navigate(`/compra-exitosa?id=${data.id_venta}&metodo=${metodoElegido}`);
+    } catch {
+      setError('Error de conexión al enviar el pedido. Por favor, intentá nuevamente.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Estados especiales
@@ -244,10 +299,14 @@ export default function Checkout({ carrito, setCarrito }) {
         {/* Header */}
         <div className="checkout-header">
           <div className="carrito-header" style={{ justifyContent: 'center' }}>
-            <h1 className="carrito-titulo">Finaliza tu compra</h1>
+            <h1 className="carrito-titulo">Finalizá tu compra</h1>
           </div>
           <div className="checkout-steps">
-            {[{ n: 1, label: 'Datos de envío' }, { n: 2, label: 'Envío' }, { n: 3, label: 'Pago' }].map((s, i) => (
+            {[
+              { n: 1, label: 'Datos de contacto' },
+              { n: 2, label: 'Envío' },
+              ...(envioSeleccionado?.id === 'retiro_villa_mercedes' ? [] : [{ n: 3, label: 'Pago' }]),
+            ].map((s, i) => (
               <React.Fragment key={s.n}>
                 {i > 0 && <div className="step-line" />}
                 <div className={`checkout-step ${paso >= s.n ? 'active' : ''}`}>
@@ -264,11 +323,16 @@ export default function Checkout({ carrito, setCarrito }) {
           <div className="checkout-form-col">
             {paso === 1 && (
               <div className="checkout-card">
-                <h2 className="checkout-card-titulo">Datos de envío</h2>
+                <h2 className="checkout-card-titulo">Datos de contacto y entrega</h2>
+                <p style={{ color: 'var(--gris)', fontSize: '0.88rem', marginBottom: 20 }}>
+                  Completá tus datos para que podamos coordinar la confirmación y entrega de tu pedido.
+                </p>
+
                 {[
-                  { name: 'nombre_comprador', label: 'Nombre completo *', placeholder: 'Ej: María García', type: 'text' },
-                  { name: 'email_comprador',  label: 'Email *', placeholder: 'Ej: maria@gmail.com', type: 'email' },
-                  { name: 'direccion',        label: 'Dirección *', placeholder: 'Ej: Av. Corrientes 1234, Piso 2 Dpto A', type: 'text' },
+                  { name: 'nombre_comprador',   label: 'Nombre completo *', placeholder: 'Ej: María García', type: 'text' },
+                  { name: 'telefono_comprador', label: 'Número de teléfono / WhatsApp *', placeholder: 'Ej: 2657 123456', type: 'tel' },
+                  { name: 'email_comprador',    label: 'Email *', placeholder: 'Ej: maria@gmail.com', type: 'email' },
+                  { name: 'direccion',          label: 'Dirección *', placeholder: 'Ej: Av. Mitre 1234, Piso 2 Dpto A', type: 'text' },
                 ].map(f => (
                   <div key={f.name} className="form-group">
                     <label>{f.label}</label>
@@ -280,8 +344,8 @@ export default function Checkout({ carrito, setCarrito }) {
 
                 <div className="form-row">
                   {[
-                    { name: 'ciudad', label: 'Ciudad *', placeholder: 'Ej: Buenos Aires' },
-                    { name: 'codigo_postal', label: 'Código postal *', placeholder: 'Ej: 1043' },
+                    { name: 'ciudad', label: 'Ciudad *', placeholder: 'Ej: Villa Mercedes' },
+                    { name: 'codigo_postal', label: 'Código postal *', placeholder: 'Ej: 5730' },
                   ].map(f => (
                     <div key={f.name} className="form-group">
                       <label>{f.label}</label>
@@ -302,10 +366,10 @@ export default function Checkout({ carrito, setCarrito }) {
                   {errores.provincia && <span className="form-error">{errores.provincia}</span>}
                 </div>
 
-                <button className="btn-checkout-primary" onClick={async () => {
-                  if (validarPaso1()) { setPaso(2); await calcularEnvio(); }
+                <button className="btn-checkout-primary" onClick={() => {
+                  if (validarPaso1()) { setPaso(2); }
                 }}>
-                  Continuar →
+                  Continuar a Envío →
                 </button>
               </div>
             )}
@@ -313,69 +377,126 @@ export default function Checkout({ carrito, setCarrito }) {
             {paso === 2 && (
               <div className="checkout-card">
                 <button className="btn-checkout-volver-paso" onClick={() => setPaso(1)}>← Volver</button>
-                <h2 className="checkout-card-titulo">Elegí cómo recibís tu pedido</h2>
+                <h2 className="checkout-card-titulo">Elegí la opción de envío</h2>
+                <p style={{ color: 'var(--gris)', fontSize: '0.88rem', marginBottom: 20 }}>
+                  Elegí si preferís recibirlo por Correo Argentino o coordinar retiro en Villa Mercedes:
+                </p>
 
-                {loadingEnvio && (
-                  <div style={{ textAlign: 'center', padding: '32px 0' }}>
-                    <div className="detalle-spinner" style={{ margin: '0 auto 12px' }} />
-                    <p style={{ color: 'var(--gris)', fontSize: '0.9rem' }}>Calculando opciones de envío...</p>
+                <div className="pago-opciones" style={{ marginBottom: 20 }}>
+                  {OPCIONES_ENVIO.map((op) => (
+                    <label key={op.id} className={`pago-opcion ${envioSeleccionado?.id === op.id ? 'selected' : ''}`}>
+                      <input
+                        type="radio"
+                        name="opcion_envio"
+                        value={op.id}
+                        checked={envioSeleccionado?.id === op.id}
+                        onChange={() => {
+                          setEnvioSeleccionado(op);
+                          setErrores({});
+                        }}
+                      />
+                      <div className="pago-opcion-content">
+                        <span className="pago-opcion-icon" style={{ fontSize: 22, display: 'flex', alignItems: 'center' }}>
+                          {op.emoji}
+                        </span>
+                        <div>
+                          <strong>{op.nombre}</strong>
+                          <p>{op.desc}</p>
+                        </div>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+
+                {/* Confirmación de dirección para Entrega a Domicilio */}
+                {envioSeleccionado?.id === 'correo_domicilio' && (
+                  <div style={{ background: '#f0fdf4', border: '2px solid #86efac', borderRadius: 14, padding: '16px 20px', marginBottom: 20 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                      <span style={{ fontSize: 18 }}>📍</span>
+                      <strong style={{ color: '#15803d', fontSize: '0.95rem' }}>Confirmá tu dirección de entrega:</strong>
+                    </div>
+                    <p style={{ margin: 0, color: '#374151', fontSize: '0.92rem', lineHeight: 1.5 }}>
+                      <strong>{form.direccion}</strong>, {form.ciudad}, {form.provincia} (CP: {form.codigo_postal})
+                    </p>
+                    <p style={{ margin: '8px 0 0', fontSize: '0.82rem', color: '#166534' }}>
+                      ¿Necesitás cambiarla? Podés volver al paso anterior para editar tus datos.
+                    </p>
                   </div>
                 )}
 
-                {errorEnvio && !loadingEnvio && (
-                  <>
-                    <div className="checkout-error" style={{ marginBottom: 16 }}>
-                      {errorEnvio}
-                      <button onClick={calcularEnvio} style={{ marginLeft: 12, fontWeight: 700, background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}>
-                        Reintentar
-                      </button>
-                    </div>
-                    <div style={{ background: 'var(--lila-bg)', border: '2px solid var(--lila)', borderRadius: 12, padding: 16, fontSize: '0.88rem', color: 'var(--lila-dark)' }}>
-                      <strong>Sin conexión con los transportistas.</strong> Podés continuar igual — el costo de envío se coordinará con la compradora.
-                      <button
-                        className="btn-checkout-primary"
-                        style={{ marginTop: 12, width: '100%' }}
-                        onClick={() => { setEnvioSeleccionado({ id: 'manual', transportista: 'A coordinar', nombre: 'A coordinar', precio: 0 }); setPaso(3); }}
-                      >
-                        Continuar de todas formas →
-                      </button>
-                    </div>
-                  </>
+                {/* Pedido de datos de sucursal para Retiro en Sucursal */}
+                {envioSeleccionado?.id === 'correo_sucursal' && (
+                  <div style={{ background: 'var(--lila-bg)', border: '2px solid var(--lila)', borderRadius: 14, padding: '18px 20px', marginBottom: 20 }}>
+                    <label style={{ display: 'block', fontWeight: 800, color: 'var(--lila-dark)', marginBottom: 8, fontSize: '0.95rem' }}>
+                      🏢 ¿A qué sucursal de Correo Argentino querés que llegue tu pedido? *
+                    </label>
+                    <input
+                      type="text"
+                      value={sucursalCorreo}
+                      onChange={(e) => {
+                        setSucursalCorreo(e.target.value);
+                        setErrores({ ...errores, sucursal: '' });
+                      }}
+                      placeholder="Ej: Sucursal Villa Mercedes Centro, Av. Mitre 500 (o indicar tu barrio/localidad)"
+                      style={{
+                        width: '100%',
+                        padding: '12px 14px',
+                        borderRadius: 10,
+                        border: errores.sucursal ? '2px solid #e74c3c' : '2px solid #ddd',
+                        fontSize: '0.92rem',
+                        outline: 'none',
+                        boxSizing: 'border-box',
+                        background: '#fff',
+                      }}
+                    />
+                    {errores.sucursal && <span className="form-error" style={{ marginTop: 6 }}>{errores.sucursal}</span>}
+                    <p style={{ margin: '8px 0 0', fontSize: '0.82rem', color: 'var(--gris)' }}>
+                      Localidad de referencia: {form.ciudad}, {form.provincia} (CP: {form.codigo_postal}).
+                    </p>
+                  </div>
                 )}
 
-                {envioOpciones && !loadingEnvio && (
-                  <>
-                    {envioOpciones.transportistas.mercadoEnvios.disponible ? (
-                      <div className="pago-opciones">
-                        {envioOpciones.transportistas.mercadoEnvios.opciones.map((op, i) => (
-                          <label key={i} className={`pago-opcion ${envioSeleccionado?.id === `me-${i}` ? 'selected' : ''}`}>
-                            <input type="radio" name="envio" onChange={() => setEnvioSeleccionado({ id: `me-${i}`, transportista: 'Mercado Envíos', nombre: op.nombre, precio: op.precio })} />
-                            <div className="pago-opcion-content">
-                              <span className="pago-opcion-icon">
-                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
-                              </span>
-                              <div>
-                                <strong>{op.nombre}</strong>
-                                <p>{op.dias ? `${op.dias} días hábiles` : 'Tiempo según destino'}</p>
-                              </div>
-                              <span style={{ marginLeft: 'auto', fontFamily: 'Nunito', fontWeight: 900, color: 'var(--lila-dark)' }}>
-                                ${op.precio.toLocaleString('es-AR')}
-                              </span>
-                            </div>
-                          </label>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="checkout-error" style={{ marginBottom: 16 }}>
-                        {envioOpciones.transportistas.mercadoEnvios.error || 'No hay opciones de envío disponibles para ese código postal.'}
-                      </div>
-                    )}
-                  </>
+                {/* Mensaje especial para Retiro en persona */}
+                {envioSeleccionado?.id === 'retiro_villa_mercedes' && (
+                  <div style={{ background: 'var(--yellow-bg)', border: '2px solid var(--yellow)', borderRadius: 14, padding: '16px 20px', marginBottom: 20 }}>
+                    <strong style={{ color: 'var(--yellow-dark)', display: 'block', marginBottom: 6, fontSize: '0.95rem' }}>
+                      📍 Retiro en Villa Mercedes
+                    </strong>
+                    <p style={{ margin: 0, color: 'var(--texto)', fontSize: '0.9rem', lineHeight: 1.5 }}>
+                      Al confirmar el pedido, nos comunicamos con vos por WhatsApp para coordinar el día, horario y punto de entrega. ¡No tenés que abonar nada ahora, pagás al momento de retirar!
+                    </p>
+                  </div>
                 )}
 
-                {envioSeleccionado && (
-                  <button className="btn-checkout-primary" onClick={() => setPaso(3)}>
-                    Continuar →
+                {errores.envio && <span className="form-error" style={{ display: 'block', marginBottom: 16 }}>{errores.envio}</span>}
+                {error && <div className="checkout-error" style={{ marginBottom: 16 }}>{error}</div>}
+
+                {/* Botón según la opción seleccionada */}
+                {envioSeleccionado?.id === 'retiro_villa_mercedes' ? (
+                  <button
+                    className="btn-checkout-primary"
+                    onClick={() => handleConfirmarPedido('retiro_en_persona')}
+                    disabled={loading}
+                  >
+                    {loading ? 'Procesando pedido...' : 'Confirmar pedido'}
+                  </button>
+                ) : (
+                  <button
+                    className="btn-checkout-primary"
+                    onClick={() => {
+                      if (!envioSeleccionado) {
+                        setErrores({ envio: 'Seleccioná una opción de envío para continuar' });
+                        return;
+                      }
+                      if (envioSeleccionado.id === 'correo_sucursal' && !sucursalCorreo.trim()) {
+                        setErrores({ sucursal: 'Por favor, ingresá la sucursal de Correo Argentino o tu localidad de preferencia' });
+                        return;
+                      }
+                      setErrores({});
+                      setPaso(3);
+                    }}
+                  >
+                    Continuar
                   </button>
                 )}
               </div>
@@ -385,11 +506,24 @@ export default function Checkout({ carrito, setCarrito }) {
               <div className="checkout-card">
                 <button className="btn-checkout-volver-paso" onClick={() => setPaso(2)}>← Volver</button>
                 <h2 className="checkout-card-titulo">Método de pago</h2>
+                <p style={{ color: 'var(--gris)', fontSize: '0.88rem', marginBottom: 20 }}>
+                  Elegí cómo preferís abonar. Al confirmar el pedido nos contactaremos con vos para enviarte el link o datos correspondientes:
+                </p>
 
                 <div className="pago-opciones">
                   {[
-                    { value: 'mercadopago', icon: 'mp', titulo: 'MercadoPago', desc: 'Tarjeta de crédito, débito o saldo MP' },
-                    { value: 'transferencia', icon: 'bank', titulo: 'Transferencia bancaria', desc: 'Te enviamos los datos por email' },
+                    {
+                      value: 'mercadopago',
+                      icon: 'mp',
+                      titulo: 'Mercado Pago',
+                      desc: 'Te enviaremos el link de pago por WhatsApp o email para que abones con tarjeta de crédito, débito o dinero en cuenta.',
+                    },
+                    {
+                      value: 'transferencia',
+                      icon: 'bank',
+                      titulo: 'Transferencia bancaria',
+                      desc: 'Te enviaremos los datos bancarios (CBU / Alias) por WhatsApp o email para realizar la transferencia.',
+                    },
                   ].map(op => (
                     <label key={op.value} className={`pago-opcion ${form.metodo_pago === op.value ? 'selected' : ''}`}>
                       <input type="radio" name="metodo_pago" value={op.value}
@@ -408,27 +542,37 @@ export default function Checkout({ carrito, setCarrito }) {
                 </div>
 
                 {errores.metodo_pago && <span className="form-error">{errores.metodo_pago}</span>}
-                {form.metodo_pago === 'transferencia' && (
-                  <div className="transferencia-aviso">
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{marginRight:8,verticalAlign:'middle',flexShrink:0}}>
-                      <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/>
-                    </svg>
-                    Recibirás los datos bancarios en tu email. Confirmamos tu pedido cuando acreditemos el pago.
-                  </div>
-                )}
+
+                <div className="transferencia-aviso" style={{ marginTop: 18 }}>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{marginRight:8,verticalAlign:'middle',flexShrink:0}}>
+                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/>
+                  </svg>
+                  Al hacer clic en <strong>Confirmar pedido</strong>, recibiremos tu solicitud y nos pondremos en contacto por WhatsApp o email con la confirmación de stock y el link o datos para abonar.
+                </div>
+
                 {error && <div className="checkout-error">{error}</div>}
 
-                <button className="btn-checkout-primary" onClick={handleConfirmar} disabled={loading}>
-                  {loading ? 'Procesando...'
-                    : form.metodo_pago === 'mercadopago' ? 'Pagar con MercadoPago'
-                    : 'Confirmar pedido'}
+                <button
+                  className="btn-checkout-primary"
+                  onClick={() => handleConfirmarPedido()}
+                  disabled={loading}
+                  style={{ marginTop: 24 }}
+                >
+                  {loading ? 'Procesando pedido...' : 'Confirmar pedido'}
                 </button>
               </div>
             )}
           </div>
 
           {/* Columna derecha */}
-          <ResumenPedido carrito={carrito} total={total} paso={paso} form={form} />
+          <ResumenPedido
+            carrito={carrito}
+            total={total}
+            paso={paso}
+            form={form}
+            envioSeleccionado={envioSeleccionado}
+            sucursalCorreo={sucursalCorreo}
+          />
         </div>
       </div>
     </div>

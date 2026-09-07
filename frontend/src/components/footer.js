@@ -48,6 +48,7 @@ export default function Footer() {
           <h4 className="footer-col-titulo">Información</h4>
           <ul className="footer-links">
             <li><Link to="/nosotros">Sobre nosotros</Link></li>
+            <li><Link to="/como-comprar">¿Cómo comprar?</Link></li>
             <li><Link to="/envios">Envíos</Link></li>
             <li><Link to="/contacto">Contacto</Link></li>
             <li><Link to="/mayor">Packs por mayor</Link></li>

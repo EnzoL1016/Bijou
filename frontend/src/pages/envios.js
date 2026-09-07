@@ -1,48 +1,27 @@
-// frontend/src/pages/Envios.js
+// frontend/src/pages/envios.js
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-
-const TRANSPORTISTAS = [
-  {
-    nombre: 'Correo Argentino',
-    emoji: '📦',
-    color: 'var(--lila-bg)',
-    border: 'var(--lila)',
-    descripcion: 'Envíos a todo el país. Podés hacer el seguimiento con el número de tracking que te enviamos por email.',
-    tiempo: '3 a 7 días hábiles',
-    info: 'El costo varía según destino y peso del paquete.',
-  },
-  {
-    nombre: 'Andreani',
-    emoji: '🚚',
-    color: 'var(--mint-bg)',
-    border: 'var(--mint)',
-    descripcion: 'Cobertura nacional con seguimiento en tiempo real desde su app o web.',
-    tiempo: '2 a 5 días hábiles',
-    info: 'El costo varía según destino y peso del paquete.',
-  },
-];
 
 const FAQS = [
   {
     q: '¿Cuándo se envía mi pedido?',
-    a: 'Preparamos y despachamos los pedidos dentro de las 48 horas hábiles de confirmado el pago.',
+    a: 'Preparamos y despachamos los artículos en stock dentro de las 48 horas hábiles una vez confirmado el pago.',
   },
   {
     q: '¿Cómo sé que mi paquete está en camino?',
-    a: 'Te enviamos un email con el número de seguimiento en cuanto despachamos tu pedido. Con ese número podés rastrear tu envío en el sitio del transportista.',
+    a: 'Te enviamos un mensaje y/o email con el número de seguimiento en cuanto despachamos tu pedido para que puedas rastrearlo en la web de Correo Argentino.',
   },
   {
     q: '¿Hacen envíos a todo el país?',
-    a: 'Sí, enviamos a todo Argentina por Correo Argentino o Andreani.',
+    a: 'Sí, enviamos a todo el territorio nacional a través de Correo Argentino (PAQ. AR).',
   },
   {
     q: '¿Qué pasa si mi paquete llega dañado?',
-    a: 'Escribinos por Instagram o email con fotos del paquete y el producto. Lo resolvemos juntas.',
+    a: 'Escribinos por WhatsApp, Instagram o email con fotos del paquete y el producto para ayudarte de inmediato.',
   },
   {
     q: '¿Puedo retirar en persona?',
-    a: 'Por el momento no contamos con local físico. Estamos disponibles en ferias locales de Villa Mercedes, San Luis — seguinos en Instagram para enterarte cuándo.',
+    a: 'Si sos de Villa Mercedes sí podés acordar retiro por domicilio o punto de encuentro.',
   },
 ];
 
@@ -60,49 +39,72 @@ export default function Envios() {
         <div className="estatica-hero-content">
           <p className="estatica-hero-tag">🚚 Envíos</p>
           <h1 className="estatica-hero-titulo">Tu pedido llega<br/>a donde estés</h1>
-          <p className="estatica-hero-sub">Enviamos a todo el país por Correo Argentino y Andreani</p>
+          <p className="estatica-hero-sub">Enviamos a todo el país por Correo Argentino</p>
         </div>
       </div>
 
       <div className="estatica-container">
 
-        {/* Transportistas */}
-        <div style={{ marginBottom: 56 }}>
-          <h2 className="nosotros-section-titulo" style={{ textAlign: 'center', marginBottom: 32 }}>
-            ¿Cómo enviamos?
-          </h2>
-          <div className="envios-transportistas">
-            {TRANSPORTISTAS.map((t, i) => (
-              <div key={i} className="envios-card" style={{ background: t.color, borderColor: t.border }}>
-                <span style={{ fontSize: 40, display: 'block', marginBottom: 12 }}>{t.emoji}</span>
-                <h3 style={{ fontFamily: 'Nunito', fontWeight: 900, marginBottom: 8 }}>{t.nombre}</h3>
-                <p style={{ marginBottom: 12, color: 'var(--gris)' }}>{t.descripcion}</p>
-                <div className="envios-badge">⏱ {t.tiempo}</div>
-                <p style={{ fontSize: '0.82rem', color: 'var(--gris)', marginTop: 10 }}>{t.info}</p>
-              </div>
-            ))}
+        {/* Banner tranquilidad */}
+        <div style={{ maxWidth: 760, margin: '0 auto 36px', background: 'linear-gradient(135deg, #fdf4ff 0%, #fae8ff 100%)', border: '2px dashed var(--lila)', borderRadius: 16, padding: '18px 24px', display: 'flex', alignItems: 'center', gap: 14, boxShadow: '0 4px 14px rgba(192, 132, 252, 0.12)' }}>
+          <span style={{ fontSize: 32 }}>✨</span>
+          <div>
+            <h4 style={{ fontFamily: 'Nunito', fontWeight: 900, color: 'var(--lila-dark)', margin: 0, fontSize: '1.08rem' }}>
+              Tranquila, vas a saber el costo de envío antes de abonar
+            </h4>
+            <p style={{ margin: '4px 0 0', color: 'var(--texto)', fontSize: '0.88rem' }}>
+              Al armar tu pedido coordinamos el método de envío más conveniente y te informamos el total exacto antes de que realices el pago.
+            </p>
           </div>
         </div>
 
-        {/* Pasos */}
-        <div className="envios-pasos">
-          <h2 className="nosotros-section-titulo" style={{ textAlign: 'center', marginBottom: 40 }}>
-            ¿Cómo funciona?
+        {/* Info Correo Argentino */}
+        <div style={{ marginBottom: 56 }}>
+          <h2 className="nosotros-section-titulo" style={{ textAlign: 'center', marginBottom: 32 }}>
+            Información de Envío
           </h2>
-          <div className="envios-pasos-grid">
-            {[
-              { num: '1', emoji: '🛒', titulo: 'Hacé tu pedido', texto: 'Elegí tus accesorios y completá los datos de envío en el checkout.' },
-              { num: '2', emoji: '💳', titulo: 'Confirmá el pago', texto: 'Pagá con MercadoPago o transferencia bancaria.' },
-              { num: '3', emoji: '📦', titulo: 'Preparamos tu paquete', texto: 'En menos de 48hs hábiles empacamos tu pedido con mucho cuidado.' },
-              { num: '4', emoji: '✉️', titulo: 'Te avisamos', texto: 'Te enviamos un email con el número de seguimiento para que rastrees tu paquete.' },
-            ].map((p, i) => (
-              <div key={i} className="envios-paso">
-                <div className="envios-paso-num">{p.num}</div>
-                <span style={{ fontSize: 32, margin: '12px 0 8px', display: 'block' }}>{p.emoji}</span>
-                <h4 style={{ fontFamily: 'Nunito', fontWeight: 900, marginBottom: 6 }}>{p.titulo}</h4>
-                <p style={{ color: 'var(--gris)', fontSize: '0.9rem' }}>{p.texto}</p>
+          
+          <div className="nosotros-card" style={{ maxWidth: 760, margin: '0 auto', background: 'var(--lila-bg)', borderColor: 'var(--lila)', padding: '36px 32px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 16 }}>
+              <span style={{ fontSize: 38 }}>📦</span>
+              <div>
+                <h3 style={{ fontFamily: 'Nunito', fontWeight: 900, fontSize: '1.4rem', color: 'var(--lila-dark)', margin: 0 }}>
+                  Correo Argentino (PAQ. AR)
+                </h3>
+                <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--gris)' }}>
+                  Cobertura nacional segura y confiable
+                </span>
               </div>
-            ))}
+            </div>
+
+            <p style={{ color: 'var(--texto)', lineHeight: 1.7, fontSize: '0.96rem', marginBottom: 20 }}>
+              Tiene alcance en todo el territorio nacional con un plazo de entrega desde el despacho de <strong>4 a 7 días hábiles Clásico</strong>, y de <strong>1 a 4 días Expreso</strong>.
+            </p>
+
+            <div style={{ background: 'var(--blanco)', borderRadius: 16, padding: '20px 24px', border: '2px solid var(--lila)', marginBottom: 20 }}>
+              <h4 style={{ fontFamily: 'Nunito', fontWeight: 900, color: 'var(--negro)', marginBottom: 12, fontSize: '1.05rem' }}>
+                Hay dos tipos de envíos, según tu comodidad:
+              </h4>
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <li style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: '0.95rem' }}>
+                  <span style={{ color: 'var(--lila-dark)', fontWeight: 900 }}>🏡</span>
+                  <strong>Entrega en domicilio</strong>
+                </li>
+                <li style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: '0.95rem' }}>
+                  <span style={{ color: 'var(--lila-dark)', fontWeight: 900 }}>🏢</span>
+                  <strong>Retiro por sucursal del Correo Argentino en tu localidad</strong>
+                </li>
+              </ul>
+            </div>
+
+            <div style={{ background: 'var(--mint-bg)', border: '2px solid var(--mint)', borderRadius: 14, padding: '16px 20px' }}>
+              <h4 style={{ fontFamily: 'Nunito', fontWeight: 900, color: 'var(--mint-dark)', marginBottom: 4, fontSize: '0.98rem' }}>
+                Costos:
+              </h4>
+              <p style={{ margin: 0, color: 'var(--texto)', fontSize: '0.9rem' }}>
+                El costo se calcula según la modalidad elegida (sucursal o domicilio) y el destino de entrega al momento de confirmar tu pedido.
+              </p>
+            </div>
           </div>
         </div>
 

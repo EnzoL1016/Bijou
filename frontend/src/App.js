@@ -17,6 +17,7 @@ import Nosotros from './pages/nosotros';
 import Envios from './pages/envios';
 import Contacto from './pages/contacto';
 import Personalizado from './pages/personalizado';
+import ComoComprar from './pages/comoComprar';
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -58,6 +59,7 @@ function AppContent({ carrito, setCarrito, agregarAlCarrito, actualizarCantidad,
         <Route path="/compra-error" element={<CompraError />} />
 
         {/* Categorías */}
+        <Route path="/todo" element={<Categoria agregarAlCarrito={agregarAlCarrito} />} />
         <Route path="/novedades" element={<Categoria agregarAlCarrito={agregarAlCarrito} />} />
         <Route path="/colecciones" element={<Categoria agregarAlCarrito={agregarAlCarrito} />} />
         <Route path="/mayor" element={<Categoria agregarAlCarrito={agregarAlCarrito} />} />
@@ -67,6 +69,7 @@ function AppContent({ carrito, setCarrito, agregarAlCarrito, actualizarCantidad,
 
         {/* Páginas estáticas */}
         <Route path="/nosotros" element={<Nosotros />} />
+        <Route path="/como-comprar" element={<ComoComprar />} />
         <Route path="/envios" element={<Envios />} />
         <Route path="/contacto" element={<Contacto />} />
         <Route path="/personalizado" element={<Personalizado />} />

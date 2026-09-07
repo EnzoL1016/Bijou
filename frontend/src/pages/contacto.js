@@ -27,7 +27,7 @@ const CANALES = [
     descripcion: 'Para consultas más detalladas o temas de pedidos. Respondemos en menos de 24hs.',
     accion: 'Mandarnos un mail',
     // Reemplazar con email real
-    link: 'mailto:contacto@lodyarte.com',
+    link: 'mailto:artlody@gmail.com',
     color: 'var(--lila-bg)',
     border: 'var(--lila)',
   },
@@ -105,10 +105,8 @@ export default function Contacto() {
           <div className="nosotros-card" style={{ maxWidth: 480, margin: '0 auto', background: 'var(--lila-bg)', borderColor: 'var(--lila)' }}>
             <span style={{ fontSize: 36, display: 'block', marginBottom: 12 }}>⏰</span>
             <h3 style={{ fontFamily: 'Nunito', fontWeight: 900, marginBottom: 8 }}>Horario de atención</h3>
-            <p style={{ color: 'var(--gris)' }}>
-              Lunes a viernes de 10 a 20hs<br />
-              Sábados de 10 a 15hs<br />
-              <span style={{ fontSize: '0.85rem' }}>Respondemos lo antes posible 💜</span>
+            <p style={{ color: 'var(--texto)', fontSize: '0.95rem', margin: '8px 0 0', lineHeight: 1.6 }}>
+              Podés escribirnos en cualquier momento y respondemos lo antes posible 💜
             </p>
           </div>
         </div>

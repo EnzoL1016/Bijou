@@ -2,7 +2,7 @@
 FROM node:20-alpine AS build
 WORKDIR /app
 COPY package*.json ./
-RUN npm ci
+RUN npm install
 COPY . .
 # Sourcemaps apagados en producción (menor tamaño de deploy)
 ENV GENERATE_SOURCEMAP=false

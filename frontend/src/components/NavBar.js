@@ -37,6 +37,7 @@ const CATEGORIAS = [
   { nombre: 'Promos',         path: '/promos' },
   { nombre: 'Personalizado', path: '/personalizado' },
   { nombre: 'Sobre Nosotros', path: '/nosotros' },
+  { nombre: '¿Cómo comprar?', path: '/como-comprar' },
   { nombre: 'Envíos',         path: '/envios' },
   { nombre: 'Contacto',       path: '/contacto' },
 ];
@@ -66,7 +67,7 @@ export default function NavBar({ carritoCount, busqueda, setBusqueda }) {
       {/* Announcement bar — oculto en carrito/checkout */}
       {!esRutaLimpia && (
         <div className="announcement-bar">
-          Nueva colección 2026 &nbsp;·&nbsp; Envíos a todo el país &nbsp;·&nbsp; Pagá con todas las tarjetas
+          Nueva colección 2026 &nbsp;·&nbsp; Envíos a todo el país &nbsp;·&nbsp; Sin mínimo de compra
         </div>
       )}
 

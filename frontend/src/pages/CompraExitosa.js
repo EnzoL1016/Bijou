@@ -35,7 +35,8 @@ export default function CompraExitosa() {
     );
   }
 
-  const esTransferencia = metodo === 'transferencia' || venta?.metodo_pago === 'transferencia';
+  const esRetiroEnPersona = metodo === 'retiro_en_persona' || venta?.metodo_pago === 'retiro_en_persona';
+  const esMercadoPago = metodo === 'mercadopago' || venta?.metodo_pago === 'mercadopago';
   const esPendiente = pending === 'true';
 
   return (
@@ -51,19 +52,15 @@ export default function CompraExitosa() {
         </div>
 
         <h1 className="compra-exitosa-titulo">
-          {esPendiente
-            ? '¡Pago en proceso!'
-            : esTransferencia
-              ? '¡Pedido recibido!'
-              : '¡Gracias por tu compra!'}
+          ¡Pedido recibido con éxito!
         </h1>
 
         <p className="compra-exitosa-subtitulo">
-          {esPendiente
-            ? 'Tu pago está siendo procesado por MercadoPago. Te avisaremos por email cuando se confirme.'
-            : esTransferencia
-              ? 'Te enviamos los datos para realizar la transferencia a tu email. Confirmamos el pedido al acreditar el pago.'
-              : 'Recibiste un email de confirmación con los detalles de tu compra. ¡Muy pronto llega a tu puerta! 🚚'}
+          {esRetiroEnPersona
+            ? '¡Muchas gracias! Ya registramos tu pedido. A la brevedad nos comunicaremos por WhatsApp para coordinar el día, horario y punto de entrega en Villa Mercedes.'
+            : esMercadoPago
+              ? '¡Muchas gracias! Ya registramos tu pedido. Nos comunicaremos por WhatsApp o e-mail para confirmarte el stock y enviarte el link de pago de Mercado Pago.'
+              : '¡Muchas gracias! Ya registramos tu pedido. Nos comunicaremos por WhatsApp o e-mail para confirmarte el stock y enviarte los datos de transferencia bancaria.'}
         </p>
 
         {idVenta && (
@@ -97,22 +94,18 @@ export default function CompraExitosa() {
           </div>
         )}
 
-        {/* Info de transferencia */}
-        {esTransferencia && !esPendiente && (
-          <div className="compra-exitosa-transferencia">
-            <p>📧 Revisá tu casilla de email para ver los datos de transferencia.</p>
-            <p style={{ fontSize: '13px', color: '#6b7280', marginTop: '8px' }}>
-              Una vez que realices el pago, el pedido se activa automáticamente.
-            </p>
-          </div>
-        )}
+        <div style={{ background: '#fdf4ff', border: '2px dashed var(--lila)', borderRadius: 14, padding: '16px 20px', marginTop: 20 }}>
+          <p style={{ margin: 0, color: 'var(--lila-dark)', fontSize: '0.92rem', fontWeight: 700 }}>
+            💬 Tranquila, te contactaremos antes de despachar o entregar tu pedido para confirmar todos los detalles.
+          </p>
+        </div>
 
         <button
           className="btn-checkout-primary"
           style={{ marginTop: '24px' }}
           onClick={() => navigate('/')}
         >
-          Seguir comprando ✨
+          Volver a la tienda ✨
         </button>
       </div>
     </div>

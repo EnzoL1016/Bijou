@@ -144,22 +144,29 @@ async function enviarConfirmacionCliente({ venta, items }) {
   });
 }
 
-// ── 2. Aviso al admin de nueva venta ─────────────────────────────────────────
+// ── 2. Aviso al admin de nuevo pedido ─────────────────────────────────────────
 async function enviarAvisoAdmin({ venta, items }) {
+  const metodoLabel =
+    venta.metodo_pago === 'retiro_en_persona' ? '📍 Retiro en persona (abona al recibir)' :
+    venta.metodo_pago === 'mercadopago' ? '💳 Mercado Pago (enviar link de pago)' :
+    '🏦 Transferencia bancaria (enviar datos CBU/Alias)';
+
   const html = `
     <div style="${baseStyle}">
       <div style="${containerStyle}">
         <div style="${headerStyle}">
-          <h1 style="margin:0; color:#fff; font-size:24px; font-weight:900;">🛍️ Nueva venta en Lody Arte</h1>
+          <h1 style="margin:0; color:#fff; font-size:24px; font-weight:900;">🛍️ Nuevo pedido en Lody Arte</h1>
         </div>
         <div style="${bodyStyle}">
           <span style="${chipStyle}">Pedido #${venta.id}</span>
           <h2 style="color:#1f2937; margin:0 0 16px;">Detalles del pedido</h2>
 
-          <p style="margin:4px 0;"><strong>Cliente:</strong> ${venta.nombre_comprador}</p>
-          <p style="margin:4px 0;"><strong>Email:</strong> ${venta.email_comprador}</p>
-          <p style="margin:4px 0;"><strong>Dirección:</strong> ${venta.direccion}, ${venta.ciudad}, ${venta.provincia} (CP: ${venta.codigo_postal})</p>
-          <p style="margin:4px 0;"><strong>Método de pago:</strong> ${venta.metodo_pago === 'mercadopago' ? '💳 MercadoPago' : '🏦 Transferencia'}</p>
+          <p style="margin:6px 0;"><strong>Cliente:</strong> ${venta.nombre_comprador}</p>
+          <p style="margin:6px 0;"><strong>Teléfono / WhatsApp:</strong> ${venta.telefono_comprador || 'No especificado'}</p>
+          <p style="margin:6px 0;"><strong>Email:</strong> ${venta.email_comprador}</p>
+          <p style="margin:6px 0;"><strong>Modalidad de envío:</strong> ${venta.transportista || 'Correo Argentino'}</p>
+          <p style="margin:6px 0;"><strong>Dirección / Sucursal:</strong> ${venta.direccion}, ${venta.ciudad}, ${venta.provincia} (CP: ${venta.codigo_postal})</p>
+          <p style="margin:6px 0;"><strong>Forma de pago elegida:</strong> ${metodoLabel}</p>
 
           ${tablaItems(items)}
 
@@ -169,15 +176,17 @@ async function enviarAvisoAdmin({ venta, items }) {
             </span>
           </div>
         </div>
-        <div style="${footerStyle}">Panel de admin — Lody Arte</div>
+        <div style="${footerStyle}">Panel de administración — Lody Arte</div>
       </div>
     </div>
   `;
 
+  const adminEmail = process.env.ADMIN_EMAIL || 'lodyarte@gmail.com';
+
   await transporter.sendMail({
-    from: `"Lody Arte Sistema" <${process.env.GMAIL_USER}>`,
-    to: process.env.ADMIN_EMAIL,
-    subject: `🛍️ Nueva venta #${venta.id} — $${Number(venta.total).toLocaleString('es-AR')}`,
+    from: `"Lody Arte Pedidos" <${process.env.GMAIL_USER || 'lodyarte@gmail.com'}>`,
+    to: adminEmail,
+    subject: `🛍️ Nuevo pedido #${venta.id} de ${venta.nombre_comprador} — $${Number(venta.total).toLocaleString('es-AR')}`,
     html,
   });
 }

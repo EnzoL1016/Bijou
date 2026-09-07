@@ -1,5 +1,4 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
 
 const PASOS = [
   {
@@ -56,16 +55,6 @@ export default function Personalizado() {
 
       <div className="estatica-container">
 
-        {/* Intro */}
-        <div className="personalizado-intro">
-          <p>
-            Me encanta cuando alguien llega con una idea propia. Puede ser un regalo para alguien especial,
-            algo que combine con un outfit, o simplemente algo que viste en Pinterest y querés en tu versión.
-          </p>
-          <p>
-            El proceso es simple: me escribís, me contás qué tenés en mente, y lo resolvemos juntas.
-          </p>
-        </div>
 
         {/* CTA */}
         <div className="personalizado-cta" style={{ marginBottom: 56 }}>

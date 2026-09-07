@@ -45,42 +45,6 @@ export default function Nosotros() {
           </div>
         </div>
 
-        {/* Abuela */}
-        <div className="nosotros-highlight">
-          <div className="nosotros-highlight-inner">
-            <h2 className="nosotros-section-titulo" style={{ textAlign: 'center' }}>
-              La inspiración que lo inició todo
-            </h2>
-            <p style={{ textAlign: 'center', maxWidth: 600, margin: '0 auto' }}>
-              El amor por los accesorios artesanales nació gracias a una abuela muy especial. Cada visita
-              traía algo nuevo — materiales, técnicas, historias. Esa curiosidad y ese cariño son los que
-              guían cada cosa que hacemos hoy.
-            </p>
-          </div>
-        </div>
-
-        {/* El equipo */}
-        <div className="nosotros-equipo">
-          <h2 className="nosotros-section-titulo" style={{ textAlign: 'center', marginBottom: 40 }}>
-            ¿Quiénes somos?
-          </h2>
-          <div className="nosotros-equipo-grid">
-            <div className="nosotros-card nosotros-card-pink">
-              <h3>Cindy Lopez</h3>
-              <p style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--lila-dark)', marginBottom: 8 }}>
-                Artesana · Emprendedora · Programadora
-              </p>
-              <p>Fundadora de Lody Arte. Arrancó sola haciendo cada pieza, aprendiendo, experimentando y llevando el emprendimiento a las ferias locales.</p>
-            </div>
-            <div className="nosotros-card nosotros-card-mint">
-              <h3>La mamá</h3>
-              <p style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--lila-dark)', marginBottom: 8 }}>
-                Artesana · Colaboradora
-              </p>
-              <p>Se sumó al taller con mucho entusiasmo. Aprendió las técnicas y hoy es parte fundamental del equipo.</p>
-            </div>
-          </div>
-        </div>
 
         {/* Valores */}
         <div className="nosotros-valores">
@@ -92,7 +56,7 @@ export default function Nosotros() {
               { emoji: '🌿', titulo: 'Artesanal', texto: 'Sin producción en serie. Cada pieza lleva tiempo y atención.' },
               { emoji: '💜', titulo: 'Con historia', texto: 'Detrás de cada accesorio hay una familia y una pasión real.' },
               { emoji: '🌟', titulo: 'Único', texto: 'Las pequeñas imperfecciones son parte del encanto artesanal.' },
-              { emoji: '📍', titulo: 'Local', texto: 'Orgullosamente de Villa Mercedes, San Luis, Argentina.' },
+              { emoji: '📍', titulo: 'Local', texto: 'De Villa Mercedes, San Luis, Argentina.' },
             ].map((v, i) => (
               <div key={i} className="nosotros-valor-item">
                 <span style={{ fontSize: 32 }}>{v.emoji}</span>
