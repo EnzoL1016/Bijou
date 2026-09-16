@@ -183,6 +183,11 @@ async function enviarAvisoAdmin({ venta, items }) {
 
   const adminEmail = process.env.ADMIN_EMAIL || 'lodyarte@gmail.com';
 
+  if (!process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD) {
+    console.warn(`⚠️ GMAIL_USER o GMAIL_APP_PASSWORD no configurados. Se simula envío de aviso a ${adminEmail} para el pedido #${venta.id}`);
+    return;
+  }
+
   await transporter.sendMail({
     from: `"Lody Arte Pedidos" <${process.env.GMAIL_USER || 'lodyarte@gmail.com'}>`,
     to: adminEmail,

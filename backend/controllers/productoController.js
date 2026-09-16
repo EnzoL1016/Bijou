@@ -10,11 +10,18 @@ function parsearImagenes(imagen_url) {
 // Helper: armar variantes normalizadas
 function normalizarVariantes(variantes, stock) {
   if (Array.isArray(variantes) && variantes.length > 0) {
-    if (typeof variantes[0] === 'object') return variantes;
+    if (typeof variantes[0] === 'object') {
+      return variantes.map(v => ({
+        nombre: v.nombre,
+        stock: Number(v.stock) || 0,
+        imagen_url: v.imagen_url || null,
+        precio: v.precio !== undefined && v.precio !== null && v.precio !== '' && !isNaN(Number(v.precio)) && Number(v.precio) > 0 ? Number(v.precio) : null,
+      }));
+    }
     const stockPorVariante = Math.floor((stock || 0) / variantes.length);
-    return variantes.map(nombre => ({ nombre, stock: stockPorVariante }));
+    return variantes.map(nombre => ({ nombre, stock: stockPorVariante, imagen_url: null, precio: null }));
   }
-  return [{ nombre: 'Única', stock: stock || 0 }];
+  return [{ nombre: 'Única', stock: stock || 0, imagen_url: null, precio: null }];
 }
 
 // Helper: adjuntar categorías a productos
@@ -64,18 +71,21 @@ exports.obtenerProductos = async (req, res) => {
 
     const ids = productos.map(p => p.id);
     const [variantes] = await db.query(`
-      SELECT id, id_producto, nombre, stock
+      SELECT id, id_producto, nombre, stock, imagen_url, precio
       FROM variantes
       WHERE id_producto IN (?) AND activo = 1
       ORDER BY id
     `, [ids]);
 
     let resultado = productos.map(p => {
-      const varsDelProducto = variantes.filter(v => v.id_producto === p.id);
+      const varsDelProducto = variantes.filter(v => v.id_producto === p.id).map(v => ({
+        ...v,
+        precio: v.precio !== null && v.precio !== undefined && v.precio !== '' ? Number(v.precio) : null,
+      }));
       const imagenes = parsearImagenes(p.imagen_url);
       return {
         id: p.id, nombre: p.nombre, descripcion: p.descripcion,
-        material: p.material, precio: p.precio,
+        material: p.material, precio: Number(p.precio),
         imagen_url: imagenes,
         imagenes: Array.isArray(imagenes) ? imagenes : [imagenes],
         stock: varsDelProducto.reduce((sum, v) => sum + v.stock, 0),
@@ -108,7 +118,7 @@ exports.obtenerProductoPorId = async (req, res) => {
 
     const p = rows[0];
     const [variantes] = await db.query(`
-      SELECT id, nombre, stock FROM variantes
+      SELECT id, nombre, stock, imagen_url, precio FROM variantes
       WHERE id_producto = ? AND activo = 1 ORDER BY id
     `, [id]);
 
@@ -120,14 +130,19 @@ exports.obtenerProductoPorId = async (req, res) => {
       WHERE pc.id_producto = ?
     `, [id]);
 
+    const variantesMapeadas = variantes.map(v => ({
+      ...v,
+      precio: v.precio !== null && v.precio !== undefined && v.precio !== '' ? Number(v.precio) : null,
+    }));
+
     res.json({
       id: p.id, nombre: p.nombre, descripcion: p.descripcion,
-      material: p.material, precio: p.precio,
+      material: p.material, precio: Number(p.precio),
       imagen_url: imagenes,
       imagenes: Array.isArray(imagenes) ? imagenes : [imagenes],
-      stock: variantes.reduce((sum, v) => sum + v.stock, 0),
-      variantes: variantes.map(v => v.nombre),
-      variantes_detalle: variantes,
+      stock: variantesMapeadas.reduce((sum, v) => sum + v.stock, 0),
+      variantes: variantesMapeadas.map(v => v.nombre),
+      variantes_detalle: variantesMapeadas,
       categorias: cats,
     });
   } catch (error) {
@@ -158,8 +173,8 @@ exports.crearProducto = async (req, res) => {
 
     const arrayVariantes = normalizarVariantes(variantes, stock);
     for (const v of arrayVariantes) {
-      await conn.query(`INSERT INTO variantes (id_producto, nombre, stock) VALUES (?, ?, ?)`,
-        [idProducto, v.nombre, v.stock || 0]);
+      await conn.query(`INSERT INTO variantes (id_producto, nombre, stock, imagen_url, precio, activo) VALUES (?, ?, ?, ?, ?, 1)`,
+        [idProducto, v.nombre, v.stock || 0, v.imagen_url || null, v.precio ?? null]);
     }
 
     // Asignar categorías
@@ -208,8 +223,8 @@ exports.editarProducto = async (req, res) => {
       await conn.query(`UPDATE variantes SET activo = 0 WHERE id_producto = ?`, [id]);
       const arrayVariantes = normalizarVariantes(variantes, stock);
       for (const v of arrayVariantes) {
-        await conn.query(`INSERT INTO variantes (id_producto, nombre, stock) VALUES (?, ?, ?)`,
-          [id, v.nombre, v.stock || 0]);
+        await conn.query(`INSERT INTO variantes (id_producto, nombre, stock, imagen_url, precio, activo) VALUES (?, ?, ?, ?, ?, 1)`,
+          [id, v.nombre, v.stock || 0, v.imagen_url || null, v.precio ?? null]);
       }
     }
 

@@ -22,6 +22,8 @@ CREATE TABLE IF NOT EXISTS variantes (
   id_producto INT NOT NULL,
   nombre VARCHAR(100) NOT NULL,
   stock INT DEFAULT 0,
+  imagen_url VARCHAR(255) DEFAULT NULL,
+  precio DECIMAL(10,2) DEFAULT NULL,
   activo TINYINT(1) DEFAULT 1,
   FOREIGN KEY (id_producto) REFERENCES productos(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -39,6 +41,7 @@ CREATE TABLE IF NOT EXISTS ventas (
   total DECIMAL(10,2) NOT NULL,
   estado VARCHAR(50) DEFAULT 'pendiente',
   nombre_comprador VARCHAR(255),
+  telefono_comprador VARCHAR(50),
   email_comprador VARCHAR(255),
   codigo_postal VARCHAR(20),
   direccion VARCHAR(255),

@@ -16,7 +16,7 @@ export default function Footer() {
             Accesorios artesanales hechos a mano con amor, desde Villa Mercedes, San Luis, Argentina.
           </p>
           <a
-            href="https://instagram.com/lodyarte_"
+            href="https://ig.me/m/lodyarte_"
             target="_blank"
             rel="noopener noreferrer"
             className="footer-instagram"
@@ -59,19 +59,17 @@ export default function Footer() {
           <h4 className="footer-col-titulo">Contacto</h4>
           <ul className="footer-links">
             <li>
-              <a href="https://instagram.com/lodyarte_" target="_blank" rel="noopener noreferrer">
+              <a href="https://ig.me/m/lodyarte_" target="_blank" rel="noopener noreferrer">
                 Instagram
               </a>
             </li>
             <li>
-              {/* Reemplazar con número real */}
-              <a href="https://wa.me/54XXXXXXXXXX" target="_blank" rel="noopener noreferrer">
+              <a href="https://wa.me/5492615176429" target="_blank" rel="noopener noreferrer">
                 WhatsApp
               </a>
             </li>
             <li>
-              {/* Reemplazar con email real */}
-              <a href="mailto:contacto@lodyarte.com">
+              <a href="mailto:lodyarte@gmail.com">
                 Email
               </a>
             </li>

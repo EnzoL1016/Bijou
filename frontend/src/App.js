@@ -28,7 +28,7 @@ function ScrollToTop() {
 function AppContent({ carrito, setCarrito, agregarAlCarrito, actualizarCantidad, eliminarDelCarrito, busqueda, setBusqueda }) {
   const location = useLocation();
   const esAdmin = location.pathname.startsWith("/admin");
-  const sinFooter = ["/carrito","/checkout","/compra-exitosa","/compra-error"].includes(location.pathname) || location.pathname.startsWith("/producto/");
+  const sinFooter = ["/carrito","/checkout","/compra-exitosa","/compra-error"].includes(location.pathname);
 
   return (
     <div className="App">

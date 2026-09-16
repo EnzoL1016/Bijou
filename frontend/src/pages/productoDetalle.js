@@ -16,12 +16,6 @@ function ProductoDetalle({ agregarAlCarrito }) {
   const [agregado, setAgregado] = useState(false);
   const [errorVariante, setErrorVariante] = useState(false);
 
-  const [codigoPostal, setCodigoPostal] = useState('');
-  const [loadingEnvio, setLoadingEnvio] = useState(false);
-  const [resultadoCA, setResultadoCA] = useState(null);
-  const [resultadoAndreani, setResultadoAndreani] = useState(null);
-  const [errorEnvio, setErrorEnvio] = useState('');
-
   const tieneVariantes = producto?.variantes &&
     producto.variantes.filter(v => v !== 'Única').length > 0;
 
@@ -43,6 +37,26 @@ function ProductoDetalle({ agregarAlCarrito }) {
   const prevImg = () => setImagenActual(prev => prev === 0 ? imagenes.length - 1 : prev - 1);
   const nextImg = () => setImagenActual(prev => prev === imagenes.length - 1 ? 0 : prev + 1);
 
+  const getImagenVariante = (nombreVariante) => {
+    if (!nombreVariante) return null;
+    const detalle = producto?.variantes_detalle || [];
+    const encontrada = detalle.find(v => v.nombre === nombreVariante);
+    return (encontrada && encontrada.imagen_url) ? encontrada.imagen_url : null;
+  };
+
+  const handleSeleccionarVariante = (v) => {
+    setVarianteSeleccionada(v);
+    setErrorVariante(false);
+    const detalle = producto?.variantes_detalle || [];
+    const encontrada = detalle.find(item => item.nombre === v);
+    if (encontrada && encontrada.imagen_url) {
+      const idx = imagenes.indexOf(encontrada.imagen_url);
+      if (idx !== -1) {
+        setImagenActual(idx);
+      }
+    }
+  };
+
   // Busca el id de la variante en variantes_detalle
   const getIdVariante = (nombreVariante) => {
     const detalle = producto?.variantes_detalle || [];
@@ -54,7 +68,39 @@ function ProductoDetalle({ agregarAlCarrito }) {
     return encontrada ? encontrada.id : null;
   };
 
+  const getStockVariante = (nombreVariante) => {
+    const detalle = producto?.variantes_detalle || [];
+    if (!nombreVariante) {
+      const unica = detalle.find(v => v.nombre === 'Única');
+      return unica ? Number(unica.stock) : Number(producto?.stock || 0);
+    }
+    const encontrada = detalle.find(v => v.nombre === nombreVariante);
+    return encontrada ? Number(encontrada.stock) : 0;
+  };
+
+  const getPrecioVariante = (nombreVariante) => {
+    const detalle = producto?.variantes_detalle || [];
+    if (!nombreVariante) return Number(producto?.precio || 0);
+    const encontrada = detalle.find(v => v.nombre === nombreVariante);
+    return (encontrada && encontrada.precio !== null && encontrada.precio !== undefined && encontrada.precio !== '')
+      ? Number(encontrada.precio)
+      : Number(producto?.precio || 0);
+  };
+
+  const precioActual = tieneVariantes && varianteSeleccionada
+    ? getPrecioVariante(varianteSeleccionada)
+    : Number(producto?.precio || 0);
+
+  const stockDisponible = tieneVariantes
+    ? (varianteSeleccionada ? getStockVariante(varianteSeleccionada) : 0)
+    : Number(producto?.stock || 0);
+
+  const sinStock = tieneVariantes
+    ? (varianteSeleccionada ? stockDisponible <= 0 : Number(producto?.stock || 0) <= 0)
+    : stockDisponible <= 0;
+
   const handleAgregar = () => {
+    if (sinStock) return;
     if (tieneVariantes && !varianteSeleccionada) {
       setErrorVariante(true);
       setTimeout(() => setErrorVariante(false), 2000);
@@ -62,40 +108,15 @@ function ProductoDetalle({ agregarAlCarrito }) {
     }
     const variante = tieneVariantes ? varianteSeleccionada : null;
     const idVariante = getIdVariante(variante);
+    const prodParaCarrito = {
+      ...producto,
+      precio: precioActual,
+    };
     for (let i = 0; i < cantidad; i++) {
-      agregarAlCarrito(producto, variante, idVariante);
+      agregarAlCarrito(prodParaCarrito, variante, idVariante);
     }
     setAgregado(true);
     setTimeout(() => setAgregado(false), 2000);
-  };
-
-  const calcularEnvio = async () => {
-    if (!codigoPostal || codigoPostal.length < 4) {
-      setErrorEnvio('Ingresá un código postal válido.');
-      return;
-    }
-    setErrorEnvio('');
-    setLoadingEnvio(true);
-    setResultadoCA(null);
-    setResultadoAndreani(null);
-
-    try {
-      const res = await axios.get(
-        `https://api.correoargentino.com.ar/micorreo/v1/tarifas?codigoPostalDestino=${codigoPostal}&peso=0.1&tipoPeso=KG`,
-        { timeout: 5000 }
-      );
-      setResultadoCA(res.data);
-    } catch { setResultadoCA({ error: true }); }
-
-    try {
-      const res = await axios.get(
-        `https://apis.andreani.com/v1/tarifas?codigoPostal=${codigoPostal}&peso=100`,
-        { timeout: 5000 }
-      );
-      setResultadoAndreani(res.data);
-    } catch { setResultadoAndreani({ error: true }); }
-
-    setLoadingEnvio(false);
   };
 
   if (loading) return (
@@ -112,20 +133,49 @@ function ProductoDetalle({ agregarAlCarrito }) {
     </div>
   );
 
-  return (
-    <div className="detalle-page">
+  const imgVariante = tieneVariantes && varianteSeleccionada ? getImagenVariante(varianteSeleccionada) : null;
+  const imagenPrincipalSrc = imgVariante
+    ? `/productos/${imgVariante}`
+    : (imagenes.length > 0 ? `/productos/${imagenes[imagenActual]}` : null);
 
-      <div className="detalle-breadcrumb">
-        <span className="detalle-breadcrumb-link" onClick={() => navigate('/')}>Inicio</span>
-        <span className="detalle-breadcrumb-sep"> / </span>
-        <span>{producto.nombre}</span>
+  return (
+    <div className="detalle-wrapper">
+      {/* Header Pastel de Detalle */}
+      <div className="detalle-header-banner">
+        <div className="detalle-banner-deco-1" />
+        <div className="detalle-banner-deco-2" />
+        <div className="detalle-banner-inner">
+          <button
+            onClick={() => navigate(-1)}
+            className="detalle-btn-regresar"
+          >
+            ← Volver
+          </button>
+          <div className="detalle-breadcrumb">
+            <span className="detalle-breadcrumb-link" onClick={() => navigate('/')}>Inicio</span>
+            <span className="detalle-breadcrumb-sep"> / </span>
+            {producto.categorias?.[0] && (
+              <>
+                <span
+                  className="detalle-breadcrumb-link"
+                  onClick={() => navigate(`/accesorios/${producto.categorias[0].nombre.toLowerCase()}`)}
+                >
+                  {producto.categorias[0].nombre}
+                </span>
+                <span className="detalle-breadcrumb-sep"> / </span>
+              </>
+            )}
+            <span className="detalle-breadcrumb-actual">{producto.nombre}</span>
+          </div>
+        </div>
       </div>
 
-      <div className="detalle-grid">
+      <div className="detalle-page">
+        <div className="detalle-grid">
 
         <div>
           <div className="detalle-slider-wrap">
-            {imagenes.length === 0 ? (
+            {!imagenPrincipalSrc ? (
               <div className="detalle-img-placeholder">
                 <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="var(--lila)" strokeWidth="1.5">
                   <rect x="3" y="3" width="18" height="18" rx="3" />
@@ -136,11 +186,17 @@ function ProductoDetalle({ agregarAlCarrito }) {
             ) : (
               <>
                 <img
-                  src={`/productos/${imagenes[imagenActual]}`}
+                  src={imagenPrincipalSrc}
                   alt={producto.nombre}
                   className="detalle-img-principal"
+                  style={sinStock ? { filter: 'grayscale(0.35)', opacity: 0.88 } : {}}
                 />
-                {imagenes.length > 1 && (
+                {Number(producto.stock) === 0 && (
+                  <div className="sin-stock-badge" style={{ position: 'absolute', top: 14, left: 14 }}>
+                    Sin stock
+                  </div>
+                )}
+                {!imgVariante && imagenes.length > 1 && (
                   <>
                     <button className="detalle-arrow detalle-arrow-prev" onClick={prevImg}>‹</button>
                     <button className="detalle-arrow detalle-arrow-next" onClick={nextImg}>›</button>
@@ -163,7 +219,7 @@ function ProductoDetalle({ agregarAlCarrito }) {
         <div className="detalle-col-info">
 
           <h1 className="detalle-nombre">{producto.nombre}</h1>
-          <p className="detalle-precio">${Number(producto.precio).toLocaleString('es-AR')}</p>
+          <p className="detalle-precio">${Number(precioActual).toLocaleString('es-AR')}</p>
 
           {producto.material && (
             <p className="detalle-material">
@@ -181,15 +237,20 @@ function ProductoDetalle({ agregarAlCarrito }) {
                 {errorVariante ? '⚠ Elegí una variante para continuar' : 'Variante:'}
               </span>
               <div className="detalle-variantes-btns">
-                {producto.variantes.filter(v => v !== 'Única').map(v => (
-                  <button
-                    key={v}
-                    onClick={() => { setVarianteSeleccionada(v); setErrorVariante(false); }}
-                    className={`detalle-var-btn${varianteSeleccionada === v ? ' activo' : ''}${errorVariante ? ' border-alerta' : ''}`}
-                  >
-                    {v}
-                  </button>
-                ))}
+                {producto.variantes.filter(v => v !== 'Única').map(v => {
+                  const varStock = getStockVariante(v);
+                  const varAgotada = varStock <= 0;
+                  const varPrecio = getPrecioVariante(v);
+                  return (
+                    <button
+                      key={v}
+                      onClick={() => handleSeleccionarVariante(v)}
+                      className={`detalle-var-btn${varianteSeleccionada === v ? ' activo' : ''}${errorVariante ? ' border-alerta' : ''}${varAgotada ? ' sin-stock-opt' : ''}`}
+                    >
+                      {v} {varPrecio !== Number(producto.precio) ? `($${Number(varPrecio).toLocaleString('es-AR')})` : ''} {varAgotada ? '(Sin stock)' : ''}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -197,86 +258,31 @@ function ProductoDetalle({ agregarAlCarrito }) {
           <div className="detalle-cantidad-wrap">
             <span className="detalle-label">Cantidad:</span>
             <div className="detalle-cantidad-control">
-              <button className="detalle-cant-btn" onClick={() => setCantidad(c => Math.max(1, c - 1))}>−</button>
-              <span className="detalle-cant-num">{cantidad}</span>
-              <button className="detalle-cant-btn" onClick={() => setCantidad(c => c + 1)}>+</button>
+              <button
+                className="detalle-cant-btn"
+                disabled={sinStock}
+                onClick={() => setCantidad(c => Math.max(1, c - 1))}
+              >−</button>
+              <span className="detalle-cant-num">{sinStock ? 0 : cantidad}</span>
+              <button
+                className="detalle-cant-btn"
+                disabled={sinStock || (stockDisponible > 0 && cantidad >= stockDisponible)}
+                onClick={() => setCantidad(c => c + 1)}
+              >+</button>
             </div>
           </div>
 
           <button
-            className={`detalle-btn-agregar${agregado ? ' agregado' : ''}`}
+            className={`detalle-btn-agregar${agregado ? ' agregado' : ''}${sinStock ? ' btn-deshabilitado' : ''}`}
+            disabled={sinStock || (tieneVariantes && !varianteSeleccionada)}
             onClick={handleAgregar}
           >
-            {agregado ? '✔ ¡Agregado al carrito!' : 'Agregar al carrito'}
+            {sinStock ? 'Sin stock' : agregado ? '✔ ¡Agregado al carrito!' : 'Agregar al carrito'}
           </button>
-
-          <div className="detalle-divisor" />
-
-          <div className="detalle-envio-box">
-            <h3 className="detalle-envio-titulo">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M5 17H3a2 2 0 01-2-2V5a2 2 0 012-2h11a2 2 0 012 2v3" />
-                <rect x="9" y="11" width="14" height="10" rx="1" />
-                <circle cx="12" cy="21" r="1" /><circle cx="20" cy="21" r="1" />
-              </svg>
-              Calcular envío
-            </h3>
-            <div className="detalle-envio-input-wrap">
-              <input
-                type="text" inputMode="numeric" maxLength={8}
-                placeholder="Ingresá tu código postal"
-                value={codigoPostal}
-                onChange={e => setCodigoPostal(e.target.value.replace(/\D/g, ''))}
-                onKeyDown={e => e.key === 'Enter' && calcularEnvio()}
-                className="detalle-cp-input"
-              />
-              <button className="detalle-btn-calcular" onClick={calcularEnvio} disabled={loadingEnvio}>
-                {loadingEnvio ? '...' : 'Calcular'}
-              </button>
-            </div>
-            {errorEnvio && <p className="detalle-error-txt">{errorEnvio}</p>}
-            {(resultadoCA || resultadoAndreani) && (
-              <div className="detalle-resultados-wrap">
-                <div className="detalle-resultado-card">
-                  <span className="detalle-resultado-nombre">📦 Correo Argentino</span>
-                  {resultadoCA?.error ? (
-                    <p className="detalle-error-txt">No disponible en este momento.</p>
-                  ) : resultadoCA ? (
-                    <div className="detalle-tarifas-list">
-                      {Array.isArray(resultadoCA) ? resultadoCA.map((t, i) => (
-                        <div key={i} className="detalle-tarifa-item">
-                          <span>{t.descripcion || t.modalidad || `Opción ${i + 1}`}</span>
-                          <span className="detalle-tarifa-precio">
-                            {t.precio != null ? `$${Number(t.precio).toLocaleString('es-AR')}` : 'Consultar'}
-                          </span>
-                        </div>
-                      )) : <p style={{ color: 'var(--gris)', fontSize: 13 }}>{resultadoCA.mensaje || 'Ver opciones en Correo Argentino.'}</p>}
-                    </div>
-                  ) : null}
-                </div>
-                <div className="detalle-resultado-card">
-                  <span className="detalle-resultado-nombre">🚚 Andreani</span>
-                  {resultadoAndreani?.error ? (
-                    <p className="detalle-error-txt">No disponible en este momento.</p>
-                  ) : resultadoAndreani ? (
-                    <div className="detalle-tarifas-list">
-                      {Array.isArray(resultadoAndreani) ? resultadoAndreani.map((t, i) => (
-                        <div key={i} className="detalle-tarifa-item">
-                          <span>{t.descripcion || t.modalidad || `Opción ${i + 1}`}</span>
-                          <span className="detalle-tarifa-precio">
-                            {t.precio != null ? `$${Number(t.precio).toLocaleString('es-AR')}` : 'Consultar'}
-                          </span>
-                        </div>
-                      )) : <p style={{ color: 'var(--gris)', fontSize: 13 }}>{resultadoAndreani.mensaje || 'Ver opciones en Andreani.'}</p>}
-                    </div>
-                  ) : null}
-                </div>
-              </div>
-            )}
-          </div>
 
         </div>
       </div>
+    </div>
     </div>
   );
 }

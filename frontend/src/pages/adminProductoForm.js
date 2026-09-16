@@ -16,6 +16,11 @@ function AdminProductoForm({ productoEditar, onGuardado, onCancelar }) {
   const [categoriasDisponibles, setCategoriasDisponibles] = useState([]);
   const [categoriasSeleccionadas, setCategoriasSeleccionadas] = useState([]); // array de ids
   const [nuevaCategoria, setNuevaCategoria] = useState('');
+  const [modalEliminarCat, setModalEliminarCat] = useState(null);
+
+  // Variantes vs Stock Simple
+  const [tieneVariantes, setTieneVariantes] = useState(false);
+  const [stockSimple, setStockSimple] = useState('0');
 
   // Cargar categorías disponibles
   useEffect(() => {
@@ -36,10 +41,22 @@ function AdminProductoForm({ productoEditar, onGuardado, onCancelar }) {
 
       const detalle = productoEditar.variantes_detalle || [];
       const varsReales = detalle.filter(v => v.nombre !== 'Única');
-      setVariantes(varsReales.length > 0
-        ? varsReales.map(v => ({ nombre: v.nombre, stock: String(v.stock) }))
-        : [{ nombre: '', stock: String(productoEditar.stock || '') }]
-      );
+      if (varsReales.length > 0) {
+        setTieneVariantes(true);
+        setStockSimple('0');
+        setVariantes(varsReales.map(v => ({
+          nombre: v.nombre,
+          stock: String(v.stock),
+          precio: (v.precio !== null && v.precio !== undefined && v.precio !== '' && !isNaN(Number(v.precio))) ? String(Number(v.precio)) : '',
+          imagen_url: v.imagen_url || null,
+          archivoNuevo: null,
+          previewLocal: null
+        })));
+      } else {
+        setTieneVariantes(false);
+        setStockSimple(String(productoEditar.stock ?? (detalle[0]?.stock ?? 0)));
+        setVariantes([{ nombre: '', stock: '', precio: '', imagen_url: null, archivoNuevo: null, previewLocal: null }]);
+      }
 
       const imgs = Array.isArray(productoEditar.imagen_url)
         ? productoEditar.imagen_url : (productoEditar.imagenes || []);
@@ -50,17 +67,44 @@ function AdminProductoForm({ productoEditar, onGuardado, onCancelar }) {
       const cats = productoEditar.categorias || [];
       setCategoriasSeleccionadas(cats.map(c => c.id));
     } else {
-      setVariantes([{ nombre: '', stock: '' }]);
+      setTieneVariantes(false);
+      setStockSimple('0');
+      setVariantes([{ nombre: '', stock: '', precio: '', imagen_url: null, archivoNuevo: null, previewLocal: null }]);
     }
   }, [productoEditar]);
 
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
 
   // ── Variantes ─────────────────────────────────────────────────────────────
-  const agregarVariante = () => setVariantes([...variantes, { nombre: '', stock: '' }]);
+  const agregarVariante = () => setVariantes([
+    ...variantes,
+    { nombre: '', stock: '', precio: '', imagen_url: null, archivoNuevo: null, previewLocal: null }
+  ]);
   const actualizarVariante = (i, campo, valor) => {
     const nuevas = [...variantes];
     nuevas[i] = { ...nuevas[i], [campo]: valor };
+    setVariantes(nuevas);
+  };
+  const handleFotoVariante = (i, e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const nuevas = [...variantes];
+    nuevas[i] = {
+      ...nuevas[i],
+      archivoNuevo: file,
+      previewLocal: URL.createObjectURL(file),
+      imagen_url: null,
+    };
+    setVariantes(nuevas);
+  };
+  const quitarFotoVariante = (i) => {
+    const nuevas = [...variantes];
+    nuevas[i] = {
+      ...nuevas[i],
+      archivoNuevo: null,
+      previewLocal: null,
+      imagen_url: null,
+    };
     setVariantes(nuevas);
   };
   const eliminarVariante = (i) => {
@@ -92,7 +136,23 @@ function AdminProductoForm({ productoEditar, onGuardado, onCancelar }) {
     }
   };
 
-  // ── Imágenes ──────────────────────────────────────────────────────────────
+  const confirmarEliminarCategoria = async () => {
+    if (!modalEliminarCat) return;
+    try {
+      const token = localStorage.getItem('admin_token');
+      await axios.delete(`${API}/productos/categorias/${modalEliminarCat.id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setCategoriasDisponibles(prev => prev.filter(c => c.id !== modalEliminarCat.id));
+      setCategoriasSeleccionadas(prev => prev.filter(id => id !== modalEliminarCat.id));
+      setModalEliminarCat(null);
+    } catch (err) {
+      console.error('Error al eliminar categoría', err);
+      alert('No se pudo eliminar la categoría.');
+    }
+  };
+
+  // ── Imágenes Principales ──────────────────────────────────────────────────
   const handleImagenes = (e) => {
     const files = Array.from(e.target.files);
     setArchivosNuevos(files);
@@ -121,6 +181,7 @@ function AdminProductoForm({ productoEditar, onGuardado, onCancelar }) {
       const token = localStorage.getItem('admin_token');
       const headers = { Authorization: `Bearer ${token}` };
 
+      // 1. Subir imágenes principales nuevas
       let nombresNuevos = [];
       if (archivosNuevos.length > 0) {
         const formData = new FormData();
@@ -133,11 +194,43 @@ function AdminProductoForm({ productoEditar, onGuardado, onCancelar }) {
 
       const todasLasImagenes = [...imagenesExistentes, ...nombresNuevos];
 
-      const unaFilaSinNombre = variantes.length === 1 && variantes[0].nombre.trim() === '';
-      const variantesPayload = unaFilaSinNombre
-        ? []
-        : variantes.filter(v => v.nombre.trim() !== '').map(v => ({ nombre: v.nombre.trim(), stock: Number(v.stock) || 0 }));
-      const stockTotal = unaFilaSinNombre ? Number(variantes[0].stock) || 0 : undefined;
+      // 2. Subir imágenes individuales de variantes si tienen archivos nuevos
+      const variantesProcesadas = await Promise.all(
+        variantes.map(async (v) => {
+          const precioVar = v.precio !== undefined && v.precio !== '' && v.precio !== null && !isNaN(Number(v.precio)) && Number(v.precio) > 0 ? Number(v.precio) : null;
+          if (v.archivoNuevo) {
+            const formDataVar = new FormData();
+            formDataVar.append('imagenes', v.archivoNuevo);
+            const uploadRes = await axios.post(`${API}/upload`, formDataVar, {
+              headers: { ...headers, 'Content-Type': 'multipart/form-data' },
+            });
+            const archivoVar = uploadRes.data.archivos[0];
+            return {
+              nombre: v.nombre.trim(),
+              stock: Number(v.stock) || 0,
+              precio: precioVar,
+              imagen_url: archivoVar,
+            };
+          }
+          return {
+            nombre: v.nombre.trim(),
+            stock: Number(v.stock) || 0,
+            precio: precioVar,
+            imagen_url: v.imagen_url || null,
+          };
+        })
+      );
+
+      let variantesPayload = [];
+      let stockTotal = 0;
+
+      if (tieneVariantes) {
+        variantesPayload = variantesProcesadas.filter(v => v.nombre.trim() !== '');
+        stockTotal = variantesPayload.reduce((sum, v) => sum + v.stock, 0);
+      } else {
+        variantesPayload = [];
+        stockTotal = Number(stockSimple) || 0;
+      }
 
       const payload = {
         nombre: form.nombre,
@@ -147,7 +240,7 @@ function AdminProductoForm({ productoEditar, onGuardado, onCancelar }) {
         imagenes: todasLasImagenes,
         variantes: variantesPayload,
         categorias: categoriasSeleccionadas,
-        ...(stockTotal !== undefined && { stock: stockTotal }),
+        stock: stockTotal,
       };
 
       if (productoEditar) {
@@ -164,8 +257,6 @@ function AdminProductoForm({ productoEditar, onGuardado, onCancelar }) {
       setCargando(false);
     }
   };
-
-  const tienNombresVariantes = variantes.some(v => v.nombre.trim() !== '');
 
   return (
     <div style={estilos.overlay}>
@@ -197,23 +288,65 @@ function AdminProductoForm({ productoEditar, onGuardado, onCancelar }) {
           {/* Categorías */}
           <div style={estilos.campo}>
             <label style={estilos.label}>
-              Categorías <span style={estilos.hint}>(podés seleccionar varias)</span>
+              Categorías <span style={estilos.hint}>(hacé clic para seleccionar; usá la cruz para borrar una categoría)</span>
             </label>
             <div style={estilos.categoriasWrap}>
-              {categoriasDisponibles.map(cat => (
-                <button
-                  key={cat.id}
-                  type="button"
-                  onClick={() => toggleCategoria(cat.id)}
-                  style={{
-                    ...estilos.catBtn,
-                    background: categoriasSeleccionadas.includes(cat.id) ? '#333' : '#f0f0f0',
-                    color: categoriasSeleccionadas.includes(cat.id) ? 'white' : '#444',
-                  }}
-                >
-                  {cat.nombre}
-                </button>
-              ))}
+              {categoriasDisponibles.map(cat => {
+                const seleccionada = categoriasSeleccionadas.includes(cat.id);
+                return (
+                  <div
+                    key={cat.id}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      background: seleccionada ? '#0284c7' : '#f1f5f9',
+                      border: seleccionada ? '1px solid #0284c7' : '1px solid #cbd5e1',
+                      borderRadius: 999,
+                      padding: '3px 8px 3px 14px',
+                      gap: 6,
+                    }}
+                  >
+                    <span
+                      onClick={() => toggleCategoria(cat.id)}
+                      style={{
+                        cursor: 'pointer',
+                        fontSize: '0.86rem',
+                        fontWeight: 700,
+                        color: seleccionada ? 'white' : '#334155',
+                        userSelect: 'none',
+                      }}
+                    >
+                      {cat.nombre}
+                    </span>
+                    <button
+                      type="button"
+                      title={`Eliminar categoría "${cat.nombre}"`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setModalEliminarCat(cat);
+                      }}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: seleccionada ? 'rgba(255,255,255,0.7)' : '#94a3b8',
+                        cursor: 'pointer',
+                        fontSize: 15,
+                        fontWeight: 'bold',
+                        padding: '0 4px',
+                        lineHeight: 1,
+                        borderRadius: '50%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.color = '#ef4444'}
+                      onMouseLeave={e => e.currentTarget.style.color = seleccionada ? 'rgba(255,255,255,0.7)' : '#94a3b8'}
+                    >
+                      ×
+                    </button>
+                  </div>
+                );
+              })}
             </div>
             {/* Crear nueva categoría inline */}
             <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
@@ -230,41 +363,138 @@ function AdminProductoForm({ productoEditar, onGuardado, onCancelar }) {
             </div>
           </div>
 
-          {/* Variantes */}
-          <div style={estilos.campo}>
-            <label style={estilos.label}>
-              Variantes y stock
-              <span style={estilos.hint}>
-                {tienNombresVariantes ? ' — cada variante tiene su propio stock' : ' — dejá el nombre vacío si no tiene variantes'}
+          {/* Selector de variantes o stock simple */}
+          <div style={{ ...estilos.campo, background: '#f8fafc', padding: '14px 18px', borderRadius: 10, border: '1px solid #e2e8f0', marginTop: 14, marginBottom: 18 }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontWeight: 800, fontSize: '0.94rem', color: '#1e293b', margin: 0 }}>
+              <input
+                type="checkbox"
+                checked={tieneVariantes}
+                onChange={(e) => {
+                  const check = e.target.checked;
+                  setTieneVariantes(check);
+                  if (check && variantes.every(v => !v.nombre.trim())) {
+                    setVariantes([{ nombre: '', stock: stockSimple || '0', precio: '', imagen_url: null, archivoNuevo: null, previewLocal: null }]);
+                  }
+                }}
+                style={{ width: 18, height: 18, cursor: 'pointer', accentColor: '#0284c7' }}
+              />
+              <span>
+                ¿Este producto tiene múltiples variantes?{' '}
+                <span style={{ fontWeight: 'normal', color: '#64748b', fontSize: '0.84rem' }}>
+                  (colores, talles, modelos con stock o precio propio)
+                </span>
               </span>
             </label>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 10 }}>
-              {variantes.map((v, i) => (
-                <div key={i} style={estilos.varianteFila}>
-                  <input
-                    style={{ ...estilos.input, flex: 2, margin: 0 }}
-                    placeholder={tienNombresVariantes || v.nombre ? 'Nombre (ej: Rojo)' : 'Sin variantes — dejá vacío'}
-                    value={v.nombre}
-                    onChange={e => actualizarVariante(i, 'nombre', e.target.value)}
-                  />
-                  <input
-                    style={{ ...estilos.input, flex: 1, margin: 0 }}
-                    type="number" placeholder="Stock" value={v.stock} min="0"
-                    onChange={e => actualizarVariante(i, 'stock', e.target.value)}
-                  />
-                  <button type="button" onClick={() => eliminarVariante(i)}
-                    style={estilos.btnEliminarVariante} disabled={variantes.length === 1}>×</button>
-                </div>
-              ))}
-            </div>
-            <button type="button" onClick={agregarVariante} style={estilos.btnAgregarVariante}>
-              + Agregar variante
-            </button>
           </div>
 
-          {/* Imágenes */}
+          {!tieneVariantes ? (
+            /* Stock para producto sin variantes */
+            <div style={estilos.campo}>
+              <label style={estilos.label}>
+                Stock disponible *
+                <span style={estilos.hint}> (unidades totales disponibles para la venta)</span>
+              </label>
+              <input
+                type="number"
+                min="0"
+                value={stockSimple}
+                onChange={e => setStockSimple(e.target.value)}
+                style={{ ...estilos.input, maxWidth: 220 }}
+                placeholder="Ej: 10"
+                required={!tieneVariantes}
+              />
+            </div>
+          ) : (
+            /* Variantes con stock, precio diferenciado y fotos */
+            <div style={estilos.campo}>
+              <label style={estilos.label}>
+                Variantes del producto
+                <span style={estilos.hint}>
+                  {` — precio por variante es opcional: si lo dejás vacío, usará el precio base ($${form.precio || 0})`}
+                </span>
+              </label>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 12 }}>
+                {variantes.map((v, i) => (
+                  <div key={i} style={estilos.varianteFila}>
+                    <input
+                      style={{ ...estilos.input, flex: 2, margin: 0 }}
+                      placeholder="Nombre variante (ej: Dorado, Talle M)"
+                      value={v.nombre}
+                      onChange={e => actualizarVariante(i, 'nombre', e.target.value)}
+                      required={tieneVariantes}
+                    />
+                    <input
+                      style={{ ...estilos.input, width: 85, flexShrink: 0, margin: 0 }}
+                      type="number"
+                      placeholder="Stock"
+                      value={v.stock}
+                      min="0"
+                      onChange={e => actualizarVariante(i, 'stock', e.target.value)}
+                      required={tieneVariantes}
+                    />
+                    <input
+                      style={{ ...estilos.input, width: 140, flexShrink: 0, margin: 0 }}
+                      type="number"
+                      step="any"
+                      placeholder={`$ (${form.precio || 'Base'})`}
+                      title="Precio específico de esta variante (opcional)"
+                      value={v.precio ?? ''}
+                      min="0"
+                      onChange={e => actualizarVariante(i, 'precio', e.target.value)}
+                    />
+
+                    {/* Foto de la variante */}
+                    <div style={estilos.varianteFotoWrap}>
+                      {v.previewLocal || v.imagen_url ? (
+                        <div style={estilos.varianteThumbWrap}>
+                          <img
+                            src={v.previewLocal || `/productos/${v.imagen_url}`}
+                            alt={v.nombre || 'Variante'}
+                            style={estilos.varianteThumb}
+                          />
+                          <button
+                            type="button"
+                            title="Quitar foto de variante"
+                            onClick={() => quitarFotoVariante(i)}
+                            style={estilos.btnQuitarFotoVar}
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ) : (
+                        <label style={estilos.btnSubirFotoVar} title="Asignar foto a esta variante">
+                          <span style={{ fontSize: 13, marginRight: 4 }}>📷</span>
+                          <span style={{ fontSize: 11, fontWeight: 600 }}>Foto</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            style={{ display: 'none' }}
+                            onChange={e => handleFotoVariante(i, e)}
+                          />
+                        </label>
+                      )}
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => eliminarVariante(i)}
+                      style={estilos.btnEliminarVariante}
+                      disabled={variantes.length === 1}
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <button type="button" onClick={agregarVariante} style={estilos.btnAgregarVariante}>
+                + Agregar variante
+              </button>
+            </div>
+          )}
+
+          {/* Imágenes Principales */}
           <div style={estilos.campo}>
-            <label style={estilos.label}>Imágenes</label>
+            <label style={estilos.label}>Imágenes principales del producto</label>
             <input type="file" accept="image/*" multiple onChange={handleImagenes} style={{ marginBottom: 10 }} />
             {previews.length > 0 && (
               <div style={estilos.previews}>
@@ -294,6 +524,39 @@ function AdminProductoForm({ productoEditar, onGuardado, onCancelar }) {
           </div>
         </form>
       </div>
+
+      {/* Popup de confirmación para eliminar categoría */}
+      {modalEliminarCat && (
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(15, 23, 42, 0.65)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 100000, backdropFilter: 'blur(3px)' }}>
+          <div style={{ background: 'white', padding: '28px', borderRadius: 14, maxWidth: 440, width: '92%', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.2)' }}>
+            <h3 style={{ margin: '0 0 10px', color: '#dc2626', fontSize: '1.2rem', fontWeight: 800 }}>
+              ⚠️ ¿Eliminar categoría?
+            </h3>
+            <p style={{ margin: '0 0 14px', color: '#334155', fontSize: '0.94rem', lineHeight: 1.5 }}>
+              ¿Estás seguro de que querés borrar la categoría <strong>"{modalEliminarCat.nombre}"</strong>?
+            </p>
+            <p style={{ margin: '0 0 20px', color: '#64748b', fontSize: '0.84rem', background: '#f8fafc', padding: '10px 14px', borderRadius: 8, border: '1px solid #e2e8f0' }}>
+              Esta acción eliminará la categoría de la base de datos y la desvinculará de todos los productos que la tengan asignada.
+            </p>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+              <button
+                type="button"
+                onClick={() => setModalEliminarCat(null)}
+                style={{ padding: '9px 18px', background: 'white', border: '1px solid #cbd5e1', borderRadius: 8, cursor: 'pointer', fontWeight: 600 }}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={confirmarEliminarCategoria}
+                style={{ padding: '9px 18px', background: '#dc2626', color: 'white', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 700 }}
+              >
+                Sí, eliminar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -311,6 +574,11 @@ const estilos = {
   categoriasWrap: { display: 'flex', flexWrap: 'wrap', gap: 8 },
   catBtn: { padding: '6px 14px', borderRadius: 999, border: 'none', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600, transition: 'all 0.15s' },
   varianteFila: { display: 'flex', gap: 8, alignItems: 'center' },
+  varianteFotoWrap: { width: 68, flexShrink: 0, display: 'flex', justifyContent: 'center' },
+  varianteThumbWrap: { position: 'relative', width: 38, height: 38 },
+  varianteThumb: { width: 38, height: 38, objectFit: 'cover', borderRadius: 6, border: '1px solid #ccc' },
+  btnQuitarFotoVar: { position: 'absolute', top: -6, right: -6, background: '#ef4444', color: 'white', border: 'none', borderRadius: '50%', width: 18, height: 18, cursor: 'pointer', fontSize: 12, fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 },
+  btnSubirFotoVar: { display: 'flex', alignItems: 'center', justifyContent: 'center', height: 36, padding: '0 8px', background: '#f8fafc', border: '1px dashed #94a3b8', borderRadius: 6, cursor: 'pointer', color: '#475569' },
   btnEliminarVariante: { width: 32, height: 32, flexShrink: 0, background: '#fee2e2', color: '#dc2626', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 'bold', fontSize: 16 },
   btnAgregarVariante: { padding: '7px 16px', background: '#f0f0f0', border: '1px solid #ddd', borderRadius: 8, cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600 },
   previews: { display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 10 },

@@ -12,9 +12,44 @@ const db = mysql.createPool({
   queueLimit: 0
 });
 
-// TEST DE CONEXIÓN: Esto te dirá en la terminal si la DB está viva
-db.getConnection()
-  .then(() => console.log("✅ Conectado a la base de datos de Lody Arte"))
-  .catch(err => console.error("❌ Error de conexión a la DB:", err.message));
+// TEST DE CONEXIÓN Y MIGRACIONES
+async function inicializarDB() {
+  try {
+    const conn = await db.getConnection();
+    console.log("✅ Conectado a la base de datos de Lody Arte");
+
+    // Verificar si la columna imagen_url existe en variantes
+    const [cols] = await conn.query(`
+      SELECT COUNT(*) as count 
+      FROM information_schema.COLUMNS 
+      WHERE TABLE_SCHEMA = DATABASE() 
+        AND TABLE_NAME = 'variantes' 
+        AND COLUMN_NAME = 'imagen_url'
+    `);
+    if (cols[0].count === 0) {
+      await conn.query(`ALTER TABLE variantes ADD COLUMN imagen_url VARCHAR(255) DEFAULT NULL`);
+      console.log("✅ Columna 'imagen_url' agregada a tabla 'variantes'");
+    }
+
+    // Verificar si la columna precio existe en variantes
+    const [colsPrecio] = await conn.query(`
+      SELECT COUNT(*) as count 
+      FROM information_schema.COLUMNS 
+      WHERE TABLE_SCHEMA = DATABASE() 
+        AND TABLE_NAME = 'variantes' 
+        AND COLUMN_NAME = 'precio'
+    `);
+    if (colsPrecio[0].count === 0) {
+      await conn.query(`ALTER TABLE variantes ADD COLUMN precio DECIMAL(10,2) DEFAULT NULL`);
+      console.log("✅ Columna 'precio' agregada a tabla 'variantes'");
+    }
+
+    conn.release();
+  } catch (err) {
+    console.error("❌ Error de conexión/migración a la DB:", err.message);
+  }
+}
+
+inicializarDB();
 
 module.exports = db;

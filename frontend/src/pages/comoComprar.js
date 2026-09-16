@@ -26,10 +26,6 @@ export default function ComoComprar() {
 
         {/* Paso a paso principal */}
         <div style={{ marginBottom: 56 }}>
-          <h2 className="nosotros-section-titulo" style={{ textAlign: 'center', marginBottom: 36 }}>
-            El proceso de compra
-          </h2>
-          
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 24, marginBottom: 32 }}>
             <div className="nosotros-card nosotros-card-pink" style={{ padding: 28 }}>
               <span style={{ fontSize: 36, display: 'block', marginBottom: 12 }}>🛒</span>

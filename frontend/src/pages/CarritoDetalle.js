@@ -10,6 +10,14 @@ function CarritoDetalle({ carrito, actualizarCantidad, eliminarDelCarrito }) {
     return acc + (p * c);
   }, 0);
 
+  const getImagenItem = (item) => {
+    if (item.varianteSeleccionada && Array.isArray(item.variantes_detalle)) {
+      const v = item.variantes_detalle.find(vd => vd.nombre === item.varianteSeleccionada);
+      if (v && v.imagen_url) return `/productos/${v.imagen_url}`;
+    }
+    return item.imagenes && item.imagenes.length > 0 ? `/productos/${item.imagenes[0]}` : '/placeholder.jpg';
+  };
+
   return (
     <div className="carrito-page">
 
@@ -42,7 +50,7 @@ function CarritoDetalle({ carrito, actualizarCantidad, eliminarDelCarrito }) {
             {carrito.map((item) => (
               <div key={`${item.id}-${item.varianteSeleccionada ?? 'sin-variante'}`} className="carrito-fila">
                 <img
-                  src={item.imagenes && item.imagenes.length > 0 ? `/productos/${item.imagenes[0]}` : '/placeholder.jpg'}
+                  src={getImagenItem(item)}
                   alt={item.nombre}
                   className="carrito-img"
                 />

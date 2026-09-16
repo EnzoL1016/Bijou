@@ -80,7 +80,7 @@ function TabProductos({ productos, onEditar, onEliminar }) {
                     ? <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
                         {vars.map(v => (
                           <span key={v.id} style={{ ...E.badge, background: v.stock === 0 ? '#fee2e2' : '#f1f5f9', color: v.stock === 0 ? '#dc2626' : '#475569' }}>
-                            {v.nombre}: {v.stock === 0 ? 'sin stock' : v.stock}
+                            {v.nombre}: {v.stock === 0 ? 'sin stock' : v.stock} {v.precio && Number(v.precio) !== Number(prod.precio) ? `($${Number(v.precio).toLocaleString('es-AR')})` : ''}
                           </span>
                         ))}
                       </div>
@@ -109,7 +109,7 @@ function TabProductos({ productos, onEditar, onEliminar }) {
 }
 
 // ── Tab Pedidos (Pendientes de pago) ──────────────────────────────────────────
-function TabPedidos({ pedidos, onMarcarPagado }) {
+function TabPedidos({ pedidos, onSolicitarConfirmarPago, onSolicitarCancelar }) {
   if (pedidos.length === 0) {
     return (
       <div style={{ textAlign: 'center', padding: '60px 20px', background: 'white', borderRadius: 14, border: '1px solid #e2e8f0' }}>
@@ -145,7 +145,22 @@ function TabPedidos({ pedidos, onMarcarPagado }) {
 
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <button
-                  onClick={() => onMarcarPagado(p.id)}
+                  onClick={() => onSolicitarCancelar(p)}
+                  style={{
+                    padding: '9px 16px',
+                    background: '#fff',
+                    color: '#ef4444',
+                    border: '1px solid #fca5a5',
+                    borderRadius: 10,
+                    cursor: 'pointer',
+                    fontSize: '0.85rem',
+                    fontWeight: 700,
+                  }}
+                >
+                  ✕ Cancelar pedido
+                </button>
+                <button
+                  onClick={() => onSolicitarConfirmarPago(p)}
                   style={{
                     padding: '10px 18px',
                     background: '#16a34a',
@@ -261,7 +276,7 @@ function TabPedidos({ pedidos, onMarcarPagado }) {
 }
 
 // ── Tab Ventas (Pagadas / Enviadas) ───────────────────────────────────────────
-function TabVentas({ ventas, onSeguimiento }) {
+function TabVentas({ ventas, onSeguimiento, onSolicitarCancelar }) {
   const estadoInfo = (v) => {
     if (v.estado === 'enviado') return { bg: '#dcfce7', color: '#15803d', label: 'Enviado' };
     return { bg: '#e0f7ff', color: '#0369a1', label: 'Pagado' };
@@ -275,7 +290,7 @@ function TabVentas({ ventas, onSeguimiento }) {
       <table style={E.tabla}>
         <thead>
           <tr style={E.trHead}>
-            {['#','Cliente','Tel / WhatsApp','Total','Pago','Estado','Fecha','Envío / Seguimiento'].map(h => (
+            {['#','Cliente','Tel / WhatsApp','Total','Pago','Estado','Fecha','Envío / Seguimiento','Acciones'].map(h => (
               <th key={h} style={E.th}>{h}</th>
             ))}
           </tr>
@@ -326,6 +341,15 @@ function TabVentas({ ventas, onSeguimiento }) {
                     )}
                   </div>
                 </td>
+                <td style={E.td}>
+                  <button
+                    onClick={() => onSolicitarCancelar(v)}
+                    title="Cancelar pedido"
+                    style={{ padding: '5px 10px', background: '#fff', color: '#ef4444', border: '1px solid #fca5a5', borderRadius: 6, cursor: 'pointer', fontSize: '0.78rem', fontWeight: 700 }}
+                  >
+                    ✕ Cancelar
+                  </button>
+                </td>
               </tr>
             );
           })}
@@ -345,6 +369,8 @@ function AdminPanel() {
   const [productoEditar, setProductoEditar] = useState(null);
   const [confirmEliminar, setConfirmEliminar] = useState(null);
   const [modalSeguimiento, setModalSeguimiento] = useState(null);
+  const [modalConfirmarPago, setModalConfirmarPago] = useState(null);
+  const [modalCancelarPedido, setModalCancelarPedido] = useState(null);
   const [seguimientoForm, setSeguimientoForm] = useState({ numero: '', transportista: '' });
   const [loadingSeg, setLoadingSeg] = useState(false);
   const navigate = useNavigate();
@@ -377,8 +403,17 @@ function AdminPanel() {
   const handleMarcarPagado = async (idVenta) => {
     try {
       await axios.patch(`${API}/checkout/confirmar-transferencia/${idVenta}`, {}, { headers });
+      setModalConfirmarPago(null);
       cargar();
     } catch { alert('Error al actualizar el estado del pedido'); }
+  };
+
+  const handleCancelarPedido = async (idVenta) => {
+    try {
+      await axios.patch(`${API}/checkout/ventas/${idVenta}/cancelar`, {}, { headers });
+      setModalCancelarPedido(null);
+      cargar();
+    } catch { alert('Error al cancelar el pedido'); }
   };
 
   const handleCargarSeguimiento = async () => {
@@ -443,12 +478,14 @@ function AdminPanel() {
       ) : tab === 'pedidos' ? (
         <TabPedidos
           pedidos={pedidosPendientes}
-          onMarcarPagado={handleMarcarPagado}
+          onSolicitarConfirmarPago={p => setModalConfirmarPago(p)}
+          onSolicitarCancelar={p => setModalCancelarPedido(p)}
         />
       ) : tab === 'ventas' ? (
         <TabVentas
           ventas={ventasAbonadas}
           onSeguimiento={v => setModalSeguimiento(v)}
+          onSolicitarCancelar={v => setModalCancelarPedido(v)}
         />
       ) : (
         <TabProductos
@@ -475,6 +512,58 @@ function AdminPanel() {
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
               <button onClick={() => setConfirmEliminar(null)} style={E.btnCancelar}>Cancelar</button>
               <button onClick={() => handleEliminar(confirmEliminar)} style={E.btnEliminarConfirm}>Eliminar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal confirmar pago */}
+      {modalConfirmarPago && (
+        <div style={E.overlay}>
+          <div style={E.card}>
+            <h3 style={{ marginBottom: 14, color: '#16a34a', fontSize: '1.25rem', fontWeight: 900 }}>
+              ✓ Confirmar Pago del Pedido #{modalConfirmarPago.id}
+            </h3>
+            <p style={{ fontSize: '0.92rem', color: '#334155', lineHeight: 1.6, marginBottom: 16 }}>
+              ¿Confirmás que el cliente <strong>{modalConfirmarPago.nombre_comprador}</strong> abonó el total de <strong>${Number(modalConfirmarPago.total).toLocaleString('es-AR')}</strong>?
+            </p>
+            <p style={{ fontSize: '0.85rem', color: '#64748b', background: '#f8fafc', padding: '10px 14px', borderRadius: 8, border: '1px solid #e2e8f0', marginBottom: 20 }}>
+              El pedido pasará a la sección de <strong>Ventas</strong> para que puedas despacharlo y cargar su número de seguimiento.
+            </p>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
+              <button onClick={() => setModalConfirmarPago(null)} style={E.btnCancelar}>Cancelar</button>
+              <button
+                onClick={() => handleMarcarPagado(modalConfirmarPago.id)}
+                style={{ ...E.btnNuevo, background: '#16a34a' }}
+              >
+                ✓ Sí, marcar como Abonado
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal cancelar pedido */}
+      {modalCancelarPedido && (
+        <div style={E.overlay}>
+          <div style={E.card}>
+            <h3 style={{ marginBottom: 14, color: '#dc2626', fontSize: '1.25rem', fontWeight: 900 }}>
+              ⚠️ Cancelar Pedido #{modalCancelarPedido.id}
+            </h3>
+            <p style={{ fontSize: '0.92rem', color: '#334155', lineHeight: 1.6, marginBottom: 16 }}>
+              ¿Deseás cancelar el pedido de <strong>{modalCancelarPedido.nombre_comprador}</strong>?
+            </p>
+            <p style={{ fontSize: '0.85rem', color: '#dc2626', background: '#fef2f2', padding: '10px 14px', borderRadius: 8, border: '1px solid #fecaca', marginBottom: 20 }}>
+              Esta acción marcará el pedido como cancelado y devolverá automáticamente el stock de los productos a la tienda.
+            </p>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
+              <button onClick={() => setModalCancelarPedido(null)} style={E.btnCancelar}>Volver</button>
+              <button
+                onClick={() => handleCancelarPedido(modalCancelarPedido.id)}
+                style={E.btnEliminarConfirm}
+              >
+                ✕ Sí, cancelar pedido
+              </button>
             </div>
           </div>
         </div>

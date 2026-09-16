@@ -7,6 +7,7 @@ const {
   confirmarTransferencia,
   cargarSeguimiento,
   getEstadoVenta,
+  cancelarVenta,
 } = require('../controllers/checkoutController');
 const verifyToken = require('../middleware/authMiddleware');
 
@@ -18,6 +19,7 @@ router.get('/venta/:idVenta', getEstadoVenta);
 // Admin
 router.patch('/confirmar-transferencia/:idVenta', verifyToken, confirmarTransferencia);
 router.patch('/ventas/:idVenta/seguimiento', verifyToken, cargarSeguimiento);
+router.patch('/ventas/:idVenta/cancelar', verifyToken, cancelarVenta);
 
 // Listar ventas (admin) con sus items
 router.get('/ventas', verifyToken, async (req, res) => {

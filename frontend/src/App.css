@@ -400,7 +400,7 @@ body {
 .modal-info-side h2 { font-family: 'Nunito', sans-serif; font-size: 1.65rem; font-weight: 900; color: var(--negro); margin-bottom: 10px; line-height: 1.2; }
 .modal-info-side h2::before { content: ''; display: block; width: 40px; height: 4px; border-radius: 4px; background: var(--lila); margin-bottom: 10px; }
 
-.descripcion-modal { font-size: 0.88rem; color: var(--gris); line-height: 1.75; }
+.descripcion-modal { font-size: 0.88rem; color: var(--gris); line-height: 1.75; white-space: pre-line; }
 .material-modal { font-size: 0.83rem; color: var(--gris); margin-top: 8px; }
 
 .precio-modal { font-family: 'Nunito', sans-serif; font-size: 2rem; font-weight: 900; color: var(--lila-dark); margin: 18px 0 0; background: var(--lila-bg); display: inline-block; padding: 6px 18px; border-radius: 12px; }
@@ -493,7 +493,144 @@ body {
 /* ============================================
    PRODUCTO DETALLE
    ============================================ */
-.detalle-page { max-width: 1100px; margin: 0 auto; padding: 32px 40px 80px; }
+.detalle-wrapper {
+  position: relative;
+  min-height: 85vh;
+  background: var(--blanco);
+  overflow-x: hidden;
+}
+
+.detalle-header-banner {
+  background: var(--sky-bg);
+  padding: 24px 48px;
+  border-bottom: 2px solid var(--sky);
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 36px;
+}
+
+.detalle-banner-deco-1 {
+  position: absolute;
+  width: 170px;
+  height: 170px;
+  border-radius: 50%;
+  background: var(--sky);
+  opacity: 0.22;
+  top: -60px;
+  right: -30px;
+  pointer-events: none;
+}
+
+.detalle-banner-deco-2 {
+  position: absolute;
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  background: var(--lila);
+  opacity: 0.25;
+  bottom: -30px;
+  right: 160px;
+  pointer-events: none;
+}
+
+.detalle-banner-inner {
+  max-width: 1100px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  position: relative;
+  z-index: 1;
+}
+
+.detalle-btn-regresar {
+  background: var(--blanco);
+  border: 2px solid var(--sky);
+  color: var(--sky-dark);
+  padding: 8px 18px;
+  border-radius: 999px;
+  font-family: 'Nunito', sans-serif;
+  font-weight: 800;
+  font-size: 0.88rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 3px 0px var(--sky);
+  display: inline-flex;
+  align-items: center;
+}
+
+.detalle-btn-regresar:hover {
+  background: var(--sky);
+  color: var(--sky-dark);
+  transform: translateY(-1px);
+}
+
+.detalle-breadcrumb {
+  font-size: 0.88rem;
+  color: var(--gris);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.detalle-breadcrumb-link {
+  color: var(--sky-dark);
+  cursor: pointer;
+  font-weight: 800;
+  font-family: 'Nunito', sans-serif;
+  transition: color 0.15s;
+}
+
+.detalle-breadcrumb-link:hover {
+  color: var(--pink-dark);
+}
+
+.detalle-breadcrumb-sep {
+  color: var(--sky);
+  font-weight: 800;
+}
+
+.detalle-breadcrumb-actual {
+  font-weight: 700;
+  color: var(--texto);
+}
+
+.detalle-page {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 40px 80px;
+  position: relative;
+}
+
+.detalle-page::before {
+  content: '';
+  position: fixed;
+  width: 380px;
+  height: 380px;
+  border-radius: 50%;
+  background: var(--lila-bg);
+  top: 100px;
+  right: -100px;
+  pointer-events: none;
+  z-index: -1;
+  opacity: 0.7;
+}
+
+.detalle-page::after {
+  content: '';
+  position: fixed;
+  width: 300px;
+  height: 300px;
+  border-radius: 50%;
+  background: var(--mint-bg);
+  bottom: 80px;
+  left: -80px;
+  pointer-events: none;
+  z-index: -1;
+  opacity: 0.7;
+}
 
 .detalle-centered { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 60vh; gap: 16px; }
 .detalle-spinner { width: 44px; height: 44px; border: 3px solid var(--lila-bg); border-top: 3px solid var(--lila); border-radius: 50%; animation: spin 0.8s linear infinite; }
@@ -501,11 +638,6 @@ body {
 
 .detalle-btn-volver { padding: 10px 22px; background: var(--lila); color: var(--lila-dark); border: none; border-radius: 999px; font-family: 'Nunito', sans-serif; font-size: 0.9rem; font-weight: 800; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 0px var(--lila-dark); }
 .detalle-btn-volver:hover { background: var(--lila-dark); color: white; transform: translateY(-2px); }
-
-.detalle-breadcrumb { font-size: 0.8rem; color: var(--gris); margin-bottom: 28px; display: flex; align-items: center; gap: 6px; }
-.detalle-breadcrumb-link { color: var(--lila-dark); cursor: pointer; font-weight: 700; font-family: 'Nunito', sans-serif; transition: color 0.15s; }
-.detalle-breadcrumb-link:hover { color: var(--pink-dark); }
-.detalle-breadcrumb-sep { color: var(--borde); }
 
 .detalle-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 56px; align-items: start; }
 
@@ -527,7 +659,7 @@ body {
 .detalle-precio { font-family: 'Nunito', sans-serif; font-size: 1.5rem; font-weight: 900; color: var(--negro); margin-bottom: 20px; display: block; }
 .detalle-label { font-family: 'Nunito', sans-serif; font-weight: 900; color: var(--negro); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; display: block; }
 .detalle-material { font-size: 0.88rem; color: var(--gris); margin-bottom: 12px; }
-.detalle-descripcion { font-size: 0.95rem; color: var(--gris); line-height: 1.75; margin-bottom: 22px; }
+.detalle-descripcion { font-size: 0.95rem; color: var(--gris); line-height: 1.75; margin-bottom: 22px; white-space: pre-line; }
 
 .detalle-variantes-wrap { margin-bottom: 22px; }
 .detalle-variantes-btns { display: flex; flex-wrap: wrap; gap: 8px; }

@@ -13,12 +13,20 @@ async function getVentaConItems(idVenta, conn) {
   return { venta, items };
 }
 
-// Ensure column exists on db connect / start
+// Ensure column exists on db connect / start safely across all MySQL versions
 async function asegurarColumnas() {
   try {
-    await db.query(`ALTER TABLE ventas ADD COLUMN IF NOT EXISTS telefono_comprador VARCHAR(50)`);
+    const [cols] = await db.query(`
+      SELECT COLUMN_NAME 
+      FROM information_schema.COLUMNS 
+      WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'ventas' AND COLUMN_NAME = 'telefono_comprador'
+    `);
+    if (cols.length === 0) {
+      await db.query(`ALTER TABLE ventas ADD COLUMN telefono_comprador VARCHAR(50) AFTER nombre_comprador`);
+      console.log("✅ Columna 'telefono_comprador' asegurada en la tabla ventas");
+    }
   } catch (e) {
-    // Catch if already exists or version doesn't support IF NOT EXISTS
+    console.warn("⚠️ Aviso al verificar columna telefono_comprador:", e.message);
   }
 }
 asegurarColumnas();
@@ -46,24 +54,44 @@ const iniciarCheckout = async (req, res) => {
       return res.status(400).json({ error: 'Método de pago inválido' });
     }
 
-    // Verificar stock disponible antes de crear la venta
+    // Resolver y verificar stock de las variantes antes de crear la venta
+    const itemsNormalizados = [];
     for (const item of items) {
-      const [[variante]] = await conn.query(
-        'SELECT stock, activo FROM variantes WHERE id = ?',
-        [item.id_variante]
-      );
-      if (!variante || !variante.activo) {
-        return res.status(400).json({ error: `Variante no disponible (id: ${item.id_variante})` });
+      let idVariante = item.id_variante || null;
+
+      // Si no viene id_variante, intentar encontrarlo por id_producto y nombre
+      if (!idVariante && item.id) {
+        const [vars] = await conn.query(
+          `SELECT id, stock, activo FROM variantes 
+           WHERE id_producto = ? AND (nombre = ? OR nombre = 'Única' OR activo = 1) 
+           ORDER BY (nombre = ?) DESC LIMIT 1`,
+          [item.id, item.nombre_variante || 'Única', item.nombre_variante || 'Única']
+        );
+        if (vars.length > 0) {
+          idVariante = vars[0].id;
+        }
       }
-      if (variante.stock < item.cantidad) {
-        return res.status(400).json({
-          error: `Stock insuficiente para "${item.nombre_producto}"${item.nombre_variante && item.nombre_variante !== 'Única' ? ` (${item.nombre_variante})` : ''}. Stock disponible: ${variante.stock}`,
-        });
+
+      if (idVariante) {
+        const [[variante]] = await conn.query(
+          'SELECT stock, activo FROM variantes WHERE id = ?',
+          [idVariante]
+        );
+        if (variante && variante.activo && Number(variante.stock) < Number(item.cantidad)) {
+          return res.status(400).json({
+            error: `Stock insuficiente para "${item.nombre_producto}"${item.nombre_variante && item.nombre_variante !== 'Única' ? ` (${item.nombre_variante})` : ''}. Stock disponible: ${variante.stock}`,
+          });
+        }
       }
+
+      itemsNormalizados.push({
+        ...item,
+        id_variante: idVariante,
+      });
     }
 
     // Calcular total
-    const total = items.reduce((acc, item) => acc + item.precio_unitario * item.cantidad, 0);
+    const total = itemsNormalizados.reduce((acc, item) => acc + Number(item.precio_unitario) * Number(item.cantidad), 0);
     const transportista = req.body.transportista || req.body.envio?.modalidad || req.body.envio?.transportista || 'Correo Argentino';
 
     // Crear venta
@@ -78,29 +106,35 @@ const iniciarCheckout = async (req, res) => {
     const idVenta = result.insertId;
 
     // Insertar detalle y descontar stock
-    for (const item of items) {
-      const subtotal = item.precio_unitario * item.cantidad;
+    for (const item of itemsNormalizados) {
+      const subtotal = Number(item.precio_unitario) * Number(item.cantidad);
       await conn.query(
         `INSERT INTO detalle_ventas
           (id_venta, id_variante, nombre_producto, nombre_variante, precio_unitario, cantidad, subtotal)
          VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [idVenta, item.id_variante, item.nombre_producto,
+        [idVenta, item.id_variante || null, item.nombre_producto,
          item.nombre_variante || 'Única', item.precio_unitario, item.cantidad, subtotal]
       );
-      await conn.query(
-        'UPDATE variantes SET stock = GREATEST(0, stock - ?) WHERE id = ?',
-        [item.cantidad, item.id_variante]
-      );
+      if (item.id_variante) {
+        await conn.query(
+          'UPDATE variantes SET stock = GREATEST(0, stock - ?) WHERE id = ?',
+          [item.cantidad, item.id_variante]
+        );
+      }
     }
 
     await conn.commit();
 
-    // Enviar email aviso admin (no bloqueante)
-    const { venta, items: itemsDB } = await getVentaConItems(idVenta);
-    enviarAvisoAdmin({ venta, items: itemsDB }).catch(e => console.error('Email admin error:', e));
+    // Enviar email aviso admin y cliente (no bloqueantes)
+    try {
+      const { venta, items: itemsDB } = await getVentaConItems(idVenta);
+      enviarAvisoAdmin({ venta, items: itemsDB }).catch(e => console.error('Email admin error:', e.message || e));
 
-    if (metodo_pago === 'transferencia') {
-      enviarConfirmacionCliente({ venta, items: itemsDB }).catch(e => console.error('Email cliente error:', e));
+      if (metodo_pago === 'transferencia') {
+        enviarConfirmacionCliente({ venta, items: itemsDB }).catch(e => console.error('Email cliente error:', e.message || e));
+      }
+    } catch (eEmail) {
+      console.error('Error preparando emails:', eEmail.message || eEmail);
     }
 
     return res.json({
@@ -229,10 +263,54 @@ const getEstadoVenta = async (req, res) => {
   }
 };
 
+// ── 6. Cancelar pedido / venta (admin) ───────────────────────────────────────
+// PATCH /checkout/ventas/:idVenta/cancelar
+const cancelarVenta = async (req, res) => {
+  const conn = await db.getConnection();
+  try {
+    await conn.beginTransaction();
+    const { idVenta } = req.params;
+
+    const [[venta]] = await conn.query('SELECT * FROM ventas WHERE id = ?', [idVenta]);
+    if (!venta) {
+      await conn.rollback();
+      return res.status(404).json({ error: 'Pedido / venta no encontrado' });
+    }
+
+    if (venta.estado !== 'cancelado') {
+      // Devolver stock
+      const [items] = await conn.query('SELECT * FROM detalle_ventas WHERE id_venta = ?', [idVenta]);
+      for (const item of items) {
+        if (item.id_variante) {
+          await conn.query(
+            'UPDATE variantes SET stock = stock + ? WHERE id = ?',
+            [item.cantidad, item.id_variante]
+          );
+        }
+      }
+
+      await conn.query(
+        `UPDATE ventas SET estado = 'cancelado', estado_pago = 'cancelado' WHERE id = ?`,
+        [idVenta]
+      );
+    }
+
+    await conn.commit();
+    res.json({ ok: true, mensaje: 'Pedido cancelado correctamente y stock restituido' });
+  } catch (err) {
+    await conn.rollback();
+    console.error('Error en cancelarVenta:', err);
+    res.status(500).json({ error: 'Error interno al cancelar el pedido' });
+  } finally {
+    conn.release();
+  }
+};
+
 module.exports = {
   iniciarCheckout,
   mpWebhook,
   confirmarTransferencia,
   cargarSeguimiento,
   getEstadoVenta,
+  cancelarVenta,
 };

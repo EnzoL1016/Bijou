@@ -83,16 +83,29 @@ export default function Envios() {
 
             <div style={{ background: 'var(--blanco)', borderRadius: 16, padding: '20px 24px', border: '2px solid var(--lila)', marginBottom: 20 }}>
               <h4 style={{ fontFamily: 'Nunito', fontWeight: 900, color: 'var(--negro)', marginBottom: 12, fontSize: '1.05rem' }}>
-                Hay dos tipos de envíos, según tu comodidad:
+                Opciones disponibles según tu localidad:
               </h4>
-              <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
-                <li style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: '0.95rem' }}>
-                  <span style={{ color: 'var(--lila-dark)', fontWeight: 900 }}>🏡</span>
-                  <strong>Entrega en domicilio</strong>
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <li style={{ display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: '0.95rem' }}>
+                  <span style={{ fontSize: '1.2rem', lineHeight: 1 }}>🏡</span>
+                  <div>
+                    <strong>Entrega en domicilio (Express o Clásico)</strong>
+                    <p style={{ margin: '2px 0 0', color: 'var(--gris)', fontSize: '0.86rem' }}>Llega a la puerta de tu casa a través de Correo Argentino.</p>
+                  </div>
                 </li>
-                <li style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: '0.95rem' }}>
-                  <span style={{ color: 'var(--lila-dark)', fontWeight: 900 }}>🏢</span>
-                  <strong>Retiro por sucursal del Correo Argentino en tu localidad</strong>
+                <li style={{ display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: '0.95rem' }}>
+                  <span style={{ fontSize: '1.2rem', lineHeight: 1 }}>🏢</span>
+                  <div>
+                    <strong>Retiro por sucursal de Correo Argentino (Express o Clásico)</strong>
+                    <p style={{ margin: '2px 0 0', color: 'var(--gris)', fontSize: '0.86rem' }}>Retirás en la sucursal más cercana de tu ciudad.</p>
+                  </div>
+                </li>
+                <li style={{ display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: '0.95rem' }}>
+                  <span style={{ fontSize: '1.2rem', lineHeight: 1 }}>📍</span>
+                  <div>
+                    <strong>Retiro en persona en Villa Mercedes, San Luis</strong>
+                    <p style={{ margin: '2px 0 0', color: 'var(--gris)', fontSize: '0.86rem' }}>¡Sin costo de envío! Coordinamos día, horario y punto de entrega por WhatsApp.</p>
+                  </div>
                 </li>
               </ul>
             </div>
@@ -102,7 +115,7 @@ export default function Envios() {
                 Costos:
               </h4>
               <p style={{ margin: 0, color: 'var(--texto)', fontSize: '0.9rem' }}>
-                El costo se calcula según la modalidad elegida (sucursal o domicilio) y el destino de entrega al momento de confirmar tu pedido.
+                El costo de Correo Argentino se calcula según la modalidad elegida (sucursal o domicilio) y el destino de entrega al momento de confirmar tu pedido. El retiro en persona en Villa Mercedes, San Luis es 100% gratuito.
               </p>
             </div>
           </div>

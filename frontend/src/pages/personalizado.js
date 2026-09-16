@@ -66,7 +66,7 @@ export default function Personalizado() {
           </p>
           <div className="personalizado-cta-btns">
             <a
-              href="https://wa.me/54XXXXXXXXXX"
+              href="https://wa.me/5492615176429?text=Hola!%20Quiero%20consultar%20por%20un%20accesorio%20personalizado%20🌸"
               target="_blank" rel="noopener noreferrer"
               className="personalizado-btn personalizado-btn-whatsapp"
             >
@@ -77,7 +77,7 @@ export default function Personalizado() {
               Escribime por WhatsApp
             </a>
             <a
-              href="https://instagram.com/lodyarte_"
+              href="https://ig.me/m/lodyarte_"
               target="_blank" rel="noopener noreferrer"
               className="personalizado-btn personalizado-btn-instagram"
             >

@@ -17,9 +17,49 @@ function ModalDetalle({ prod, cerrar, agregarAlCarrito }) {
     return detalle.find(v => v.nombre === nombreVariante)?.id ?? null;
   };
 
+  const getStockVariante = (nombreVariante) => {
+    const detalle = prod.variantes_detalle || [];
+    if (!nombreVariante) {
+      const unica = detalle.find(v => v.nombre === 'Única');
+      return unica ? Number(unica.stock) : Number(prod.stock || 0);
+    }
+    return Number(detalle.find(v => v.nombre === nombreVariante)?.stock ?? 0);
+  };
+
+  const sinStock = tieneVariantes
+    ? (variante ? getStockVariante(variante) <= 0 : Number(prod.stock || 0) <= 0)
+    : Number(prod.stock || 0) <= 0;
+
+  const getImagenVariante = (nombreVariante) => {
+    if (!nombreVariante) return null;
+    const detalle = prod.variantes_detalle || [];
+    const encontrada = detalle.find(v => v.nombre === nombreVariante);
+    return (encontrada && encontrada.imagen_url) ? encontrada.imagen_url : null;
+  };
+
+  const getPrecioVariante = (nombreVariante) => {
+    const detalle = prod.variantes_detalle || [];
+    if (!nombreVariante) return Number(prod.precio || 0);
+    const encontrada = detalle.find(v => v.nombre === nombreVariante);
+    return (encontrada && encontrada.precio !== null && encontrada.precio !== undefined && encontrada.precio !== '')
+      ? Number(encontrada.precio)
+      : Number(prod.precio || 0);
+  };
+
+  const precioActual = tieneVariantes && variante
+    ? getPrecioVariante(variante)
+    : Number(prod.precio || 0);
+
+  const imgVariante = tieneVariantes && variante ? getImagenVariante(variante) : null;
+  const imagenSrc = imgVariante
+    ? `/productos/${imgVariante}`
+    : (prod.imagenes?.length > 0 ? `/productos/${prod.imagenes[0]}` : '/placeholder.jpg');
+
   const manejarAgregar = () => {
+    if (sinStock) return;
     if (tieneVariantes && !variante) return;
-    agregarAlCarrito(prod, tieneVariantes ? variante : null, getIdVariante(tieneVariantes ? variante : null));
+    const prodParaCarrito = { ...prod, precio: precioActual };
+    agregarAlCarrito(prodParaCarrito, tieneVariantes ? variante : null, getIdVariante(tieneVariantes ? variante : null));
   };
 
   return (
@@ -29,8 +69,9 @@ function ModalDetalle({ prod, cerrar, agregarAlCarrito }) {
 
         <div className="modal-img-side">
           <img
-            src={prod.imagenes?.length > 0 ? `/productos/${prod.imagenes[0]}` : '/placeholder.jpg'}
+            src={imagenSrc}
             alt={prod.nombre}
+            style={sinStock ? { filter: 'grayscale(0.35)', opacity: 0.88 } : {}}
           />
         </div>
 
@@ -50,29 +91,35 @@ function ModalDetalle({ prod, cerrar, agregarAlCarrito }) {
                 Seleccioná una opción:
               </span>
               <div className="detalle-variantes-btns">
-                {variantes.map(v => (
-                  <button
-                    key={v}
-                    onClick={() => setVariante(v)}
-                    className={`detalle-var-btn${variante === v ? ' activo' : ''}`}
-                  >
-                    {v}
-                  </button>
-                ))}
+                {variantes.map(v => {
+                  const varAgotada = getStockVariante(v) <= 0;
+                  const varPrecio = getPrecioVariante(v);
+                  return (
+                    <button
+                      key={v}
+                      onClick={() => setVariante(v)}
+                      className={`detalle-var-btn${variante === v ? ' activo' : ''}${varAgotada ? ' sin-stock-opt' : ''}`}
+                    >
+                      {v} {varPrecio !== Number(prod.precio) ? `($${Number(varPrecio).toLocaleString('es-AR')})` : ''} {varAgotada ? '(Sin stock)' : ''}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           )}
 
-          <h3 className="precio-modal">${Number(prod.precio).toLocaleString()}</h3>
+          <h3 className="precio-modal">${Number(precioActual).toLocaleString('es-AR')}</h3>
 
           <button
-            className={`btn-grande${tieneVariantes && !variante ? ' btn-deshabilitado' : ''}`}
-            disabled={tieneVariantes && !variante}
+            className={`btn-grande${(tieneVariantes && !variante) || sinStock ? ' btn-deshabilitado' : ''}`}
+            disabled={(tieneVariantes && !variante) || sinStock}
             onClick={manejarAgregar}
           >
-            {tieneVariantes
-              ? (variante ? `Añadir — ${variante}` : 'Elegí una variante')
-              : 'Añadir al carrito'
+            {sinStock
+              ? 'Sin stock'
+              : tieneVariantes
+                ? (variante ? `Añadir — ${variante}` : 'Elegí una variante')
+                : 'Añadir al carrito'
             }
           </button>
         </div>

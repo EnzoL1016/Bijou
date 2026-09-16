@@ -7,7 +7,7 @@ const CANALES = [
     titulo: 'Instagram',
     descripcion: 'El lugar donde más estamos. Seguinos para ver novedades, ferias y el detrás de escena.',
     accion: 'Ir a Instagram',
-    link: 'https://instagram.com/lodyarte_',
+    link: 'https://ig.me/m/lodyarte_',
     color: 'var(--pink-bg)',
     border: 'var(--pink)',
   },
@@ -16,8 +16,7 @@ const CANALES = [
     titulo: 'WhatsApp',
     descripcion: 'Para consultas rápidas sobre pedidos, envíos o productos. Te respondemos a la brevedad.',
     accion: 'Escribirnos',
-    // Reemplazar con número real: https://wa.me/54XXXXXXXXXX
-    link: 'https://wa.me/54XXXXXXXXXX?text=Hola!%20Tengo%20una%20consulta%20sobre%20Lody%20Arte%20🌸',
+    link: 'https://wa.me/5492615176429?text=Hola!%20Tengo%20una%20consulta%20sobre%20Lody%20Arte%20🌸',
     color: 'var(--mint-bg)',
     border: 'var(--mint)',
   },
@@ -26,8 +25,7 @@ const CANALES = [
     titulo: 'Email',
     descripcion: 'Para consultas más detalladas o temas de pedidos. Respondemos en menos de 24hs.',
     accion: 'Mandarnos un mail',
-    // Reemplazar con email real
-    link: 'mailto:artlody@gmail.com',
+    link: 'mailto:lodyarte@gmail.com',
     color: 'var(--lila-bg)',
     border: 'var(--lila)',
   },

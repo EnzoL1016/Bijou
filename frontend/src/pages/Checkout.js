@@ -83,36 +83,36 @@ function ResumenPedido({ carrito, total, paso, form, envioSeleccionado, sucursal
           <span>Envío</span>
           <span style={{ fontSize: 13, color: '#6b7280', fontWeight: 700 }}>
             {envioSeleccionado
-              ? (envioSeleccionado.id === 'retiro_villa_mercedes' ? 'Sin costo (Villa Mercedes)' : envioSeleccionado.nombre)
+              ? (envioSeleccionado.id === 'retiro_en_persona' ? 'Sin costo (Villa Mercedes)' : envioSeleccionado.nombre)
               : 'Seleccionar en el paso 2'}
           </span>
         </div>
       </div>
 
-      {(paso === 3 || envioSeleccionado?.id === 'retiro_villa_mercedes') && form.nombre_comprador && (
+      {(paso === 3 || envioSeleccionado?.id === 'retiro_en_persona') && form.nombre_comprador && (
         <div className="checkout-datos-resumen">
           <p className="checkout-datos-titulo">Datos del comprador</p>
           <p><strong>{form.nombre_comprador}</strong></p>
           {form.telefono_comprador && <p>📱 {form.telefono_comprador}</p>}
           <p>✉️ {form.email_comprador}</p>
           
-          {envioSeleccionado?.id === 'correo_domicilio' && (
+          {envioSeleccionado?.tipo === 'domicilio' && (
             <>
-              <p style={{ marginTop: 8 }}>📍 <strong>Entrega en domicilio:</strong></p>
+              <p style={{ marginTop: 8 }}>📍 <strong>{envioSeleccionado.nombre}:</strong></p>
               <p>{form.direccion}</p>
               <p>{form.ciudad}, {form.provincia} ({form.codigo_postal})</p>
             </>
           )}
 
-          {envioSeleccionado?.id === 'correo_sucursal' && (
+          {envioSeleccionado?.tipo === 'sucursal' && (
             <>
-              <p style={{ marginTop: 8 }}>🏢 <strong>Retiro en sucursal:</strong></p>
+              <p style={{ marginTop: 8 }}>🏢 <strong>{envioSeleccionado.nombre}:</strong></p>
               <p>{sucursalCorreo || 'A especificar'}</p>
               <p>{form.ciudad}, {form.provincia} ({form.codigo_postal})</p>
             </>
           )}
 
-          {envioSeleccionado?.id === 'retiro_villa_mercedes' && (
+          {envioSeleccionado?.id === 'retiro_en_persona' && (
             <p style={{ marginTop: 8, color: 'var(--lila-dark)', fontWeight: 700 }}>
               📍 Retiro en persona por Villa Mercedes, San Luis
             </p>
@@ -127,24 +127,43 @@ function ResumenPedido({ carrito, total, paso, form, envioSeleccionado, sucursal
 
 const OPCIONES_ENVIO = [
   {
-    id: 'correo_domicilio',
+    id: 'domicilio_express',
+    tipo: 'domicilio',
     transportista: 'Correo Argentino',
-    nombre: 'Correo Argentino - Entrega a domicilio',
-    desc: 'PAQ. AR Clásico / Expreso con entrega en tu domicilio.',
+    nombre: 'Entrega a domicilio express',
+    desc: 'Correo Argentino (PAQ. AR Expreso) — Llega a tu domicilio en 1 a 4 días hábiles.',
+    emoji: '🚀',
+  },
+  {
+    id: 'domicilio_clasico',
+    tipo: 'domicilio',
+    transportista: 'Correo Argentino',
+    nombre: 'Domicilio clásico',
+    desc: 'Correo Argentino (PAQ. AR Clásico) — Llega a tu domicilio en 4 a 7 días hábiles.',
     emoji: '🏡',
   },
   {
-    id: 'correo_sucursal',
+    id: 'sucursal_express',
+    tipo: 'sucursal',
     transportista: 'Correo Argentino',
-    nombre: 'Correo Argentino - Retiro en sucursal',
-    desc: 'Retiro por la sucursal de Correo Argentino que elijas en tu localidad.',
+    nombre: 'Sucursal express',
+    desc: 'Correo Argentino (PAQ. AR Expreso) — Retiro en sucursal del Correo Argentino en 1 a 4 días hábiles.',
+    emoji: '⚡',
+  },
+  {
+    id: 'sucursal_clasico',
+    tipo: 'sucursal',
+    transportista: 'Correo Argentino',
+    nombre: 'Sucursal clásico',
+    desc: 'Correo Argentino (PAQ. AR Clásico) — Retiro en sucursal del Correo Argentino en 4 a 7 días hábiles.',
     emoji: '🏢',
   },
   {
-    id: 'retiro_villa_mercedes',
+    id: 'retiro_en_persona',
+    tipo: 'retiro',
     transportista: 'Retiro en persona',
-    nombre: 'Retiro en persona (Villa Mercedes, SL)',
-    desc: 'Sin costo de envío. Acordamos retiro por domicilio o punto de encuentro. Abonás al recibir.',
+    nombre: 'Retiro en persona',
+    desc: 'Villa Mercedes, San Luis — Sin costo de envío. Coordinamos día, horario y punto de entrega.',
     emoji: '📍',
   },
 ];
@@ -197,14 +216,18 @@ export default function Checkout({ carrito, setCarrito }) {
   }, [carrito]);
 
   const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+    let val = e.target.value;
+    if (e.target.name === 'telefono_comprador') {
+      val = val.replace(/\D/g, '');
+    }
+    setForm({ ...form, [e.target.name]: val });
     setErrores({ ...errores, [e.target.name]: '' });
   };
 
   const validarPaso1 = () => {
     const e = {};
     if (!form.nombre_comprador.trim()) e.nombre_comprador = 'Ingresá tu nombre';
-    if (!form.telefono_comprador.trim()) e.telefono_comprador = 'Ingresá tu número de teléfono / WhatsApp';
+    if (!form.telefono_comprador.trim()) e.telefono_comprador = 'Ingresá tu número de teléfono / WhatsApp (solo números)';
     if (!form.email_comprador.trim() || !/\S+@\S+\.\S+/.test(form.email_comprador)) e.email_comprador = 'Email inválido';
     if (!form.direccion.trim()) e.direccion = 'Ingresá tu dirección';
     if (!form.ciudad.trim()) e.ciudad = 'Ingresá tu ciudad';
@@ -225,6 +248,7 @@ export default function Checkout({ carrito, setCarrito }) {
     setError('');
     try {
       const items = carrito.map(item => ({
+        id: item.id,
         id_variante: item.idVariante,
         cantidad: item.cantidad,
         precio_unitario: item.precio,
@@ -233,16 +257,16 @@ export default function Checkout({ carrito, setCarrito }) {
       }));
 
       // Determinar detalles del envío
-      let transportistaFinal = 'Correo Argentino';
+      let transportistaFinal = envioSeleccionado?.nombre || 'Correo Argentino';
       let direccionFinal = form.direccion;
 
-      if (envioSeleccionado?.id === 'retiro_villa_mercedes') {
-        transportistaFinal = 'Retiro en persona (Villa Mercedes)';
-      } else if (envioSeleccionado?.id === 'correo_sucursal') {
-        transportistaFinal = 'Correo Argentino - Retiro en sucursal';
+      if (envioSeleccionado?.id === 'retiro_en_persona') {
+        transportistaFinal = 'Retiro en persona (Villa Mercedes, San Luis)';
+      } else if (envioSeleccionado?.tipo === 'sucursal') {
+        transportistaFinal = `Correo Argentino - ${envioSeleccionado.nombre}`;
         direccionFinal = `Sucursal Correo: ${sucursalCorreo} | Domicilio legal: ${form.direccion}`;
-      } else if (envioSeleccionado?.id === 'correo_domicilio') {
-        transportistaFinal = 'Correo Argentino - Entrega a domicilio';
+      } else if (envioSeleccionado?.tipo === 'domicilio') {
+        transportistaFinal = `Correo Argentino - ${envioSeleccionado.nombre}`;
       }
 
       const res = await fetch(`${API}/checkout/iniciar`, {
@@ -305,7 +329,7 @@ export default function Checkout({ carrito, setCarrito }) {
             {[
               { n: 1, label: 'Datos de contacto' },
               { n: 2, label: 'Envío' },
-              ...(envioSeleccionado?.id === 'retiro_villa_mercedes' ? [] : [{ n: 3, label: 'Pago' }]),
+              ...(envioSeleccionado?.id === 'retiro_en_persona' ? [] : [{ n: 3, label: 'Pago' }]),
             ].map((s, i) => (
               <React.Fragment key={s.n}>
                 {i > 0 && <div className="step-line" />}
@@ -330,13 +354,13 @@ export default function Checkout({ carrito, setCarrito }) {
 
                 {[
                   { name: 'nombre_comprador',   label: 'Nombre completo *', placeholder: 'Ej: María García', type: 'text' },
-                  { name: 'telefono_comprador', label: 'Número de teléfono / WhatsApp *', placeholder: 'Ej: 2657 123456', type: 'tel' },
+                  { name: 'telefono_comprador', label: 'Número de teléfono / WhatsApp *', placeholder: 'Ej: 2657123456', type: 'tel', inputMode: 'numeric' },
                   { name: 'email_comprador',    label: 'Email *', placeholder: 'Ej: maria@gmail.com', type: 'email' },
                   { name: 'direccion',          label: 'Dirección *', placeholder: 'Ej: Av. Mitre 1234, Piso 2 Dpto A', type: 'text' },
                 ].map(f => (
                   <div key={f.name} className="form-group">
                     <label>{f.label}</label>
-                    <input type={f.type} name={f.name} value={form[f.name]} onChange={handleChange}
+                    <input type={f.type} inputMode={f.inputMode} name={f.name} value={form[f.name]} onChange={handleChange}
                       placeholder={f.placeholder} className={errores[f.name] ? 'input-error' : ''} />
                     {errores[f.name] && <span className="form-error">{errores[f.name]}</span>}
                   </div>
@@ -345,11 +369,11 @@ export default function Checkout({ carrito, setCarrito }) {
                 <div className="form-row">
                   {[
                     { name: 'ciudad', label: 'Ciudad *', placeholder: 'Ej: Villa Mercedes' },
-                    { name: 'codigo_postal', label: 'Código postal *', placeholder: 'Ej: 5730' },
+                    { name: 'codigo_postal', label: 'Código postal *', placeholder: 'Ej: 5730', inputMode: 'numeric' },
                   ].map(f => (
                     <div key={f.name} className="form-group">
                       <label>{f.label}</label>
-                      <input type="text" name={f.name} value={form[f.name]} onChange={handleChange}
+                      <input type="text" inputMode={f.inputMode} name={f.name} value={form[f.name]} onChange={handleChange}
                         placeholder={f.placeholder} className={errores[f.name] ? 'input-error' : ''} />
                       {errores[f.name] && <span className="form-error">{errores[f.name]}</span>}
                     </div>
@@ -379,7 +403,7 @@ export default function Checkout({ carrito, setCarrito }) {
                 <button className="btn-checkout-volver-paso" onClick={() => setPaso(1)}>← Volver</button>
                 <h2 className="checkout-card-titulo">Elegí la opción de envío</h2>
                 <p style={{ color: 'var(--gris)', fontSize: '0.88rem', marginBottom: 20 }}>
-                  Elegí si preferís recibirlo por Correo Argentino o coordinar retiro en Villa Mercedes:
+                  Elegí la modalidad de entrega por Correo Argentino o retiro en persona:
                 </p>
 
                 <div className="pago-opciones" style={{ marginBottom: 20 }}>
@@ -409,7 +433,7 @@ export default function Checkout({ carrito, setCarrito }) {
                 </div>
 
                 {/* Confirmación de dirección para Entrega a Domicilio */}
-                {envioSeleccionado?.id === 'correo_domicilio' && (
+                {envioSeleccionado?.tipo === 'domicilio' && (
                   <div style={{ background: '#f0fdf4', border: '2px solid #86efac', borderRadius: 14, padding: '16px 20px', marginBottom: 20 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
                       <span style={{ fontSize: 18 }}>📍</span>
@@ -425,7 +449,7 @@ export default function Checkout({ carrito, setCarrito }) {
                 )}
 
                 {/* Pedido de datos de sucursal para Retiro en Sucursal */}
-                {envioSeleccionado?.id === 'correo_sucursal' && (
+                {envioSeleccionado?.tipo === 'sucursal' && (
                   <div style={{ background: 'var(--lila-bg)', border: '2px solid var(--lila)', borderRadius: 14, padding: '18px 20px', marginBottom: 20 }}>
                     <label style={{ display: 'block', fontWeight: 800, color: 'var(--lila-dark)', marginBottom: 8, fontSize: '0.95rem' }}>
                       🏢 ¿A qué sucursal de Correo Argentino querés que llegue tu pedido? *
@@ -457,13 +481,13 @@ export default function Checkout({ carrito, setCarrito }) {
                 )}
 
                 {/* Mensaje especial para Retiro en persona */}
-                {envioSeleccionado?.id === 'retiro_villa_mercedes' && (
+                {envioSeleccionado?.id === 'retiro_en_persona' && (
                   <div style={{ background: 'var(--yellow-bg)', border: '2px solid var(--yellow)', borderRadius: 14, padding: '16px 20px', marginBottom: 20 }}>
                     <strong style={{ color: 'var(--yellow-dark)', display: 'block', marginBottom: 6, fontSize: '0.95rem' }}>
-                      📍 Retiro en Villa Mercedes
+                      📍 Retiro en persona
                     </strong>
-                    <p style={{ margin: 0, color: 'var(--texto)', fontSize: '0.9rem', lineHeight: 1.5 }}>
-                      Al confirmar el pedido, nos comunicamos con vos por WhatsApp para coordinar el día, horario y punto de entrega. ¡No tenés que abonar nada ahora, pagás al momento de retirar!
+                    <p style={{ margin: 0, color: 'var(--texto)', fontSize: '0.92rem', lineHeight: 1.5, fontWeight: 700 }}>
+                      Al confirmar el pedido, nos comunicamos con vos por WhatsApp para efectuar el pago y coordinar el día, horario y punto de entrega.
                     </p>
                   </div>
                 )}
@@ -472,7 +496,7 @@ export default function Checkout({ carrito, setCarrito }) {
                 {error && <div className="checkout-error" style={{ marginBottom: 16 }}>{error}</div>}
 
                 {/* Botón según la opción seleccionada */}
-                {envioSeleccionado?.id === 'retiro_villa_mercedes' ? (
+                {envioSeleccionado?.id === 'retiro_en_persona' ? (
                   <button
                     className="btn-checkout-primary"
                     onClick={() => handleConfirmarPedido('retiro_en_persona')}
@@ -488,7 +512,7 @@ export default function Checkout({ carrito, setCarrito }) {
                         setErrores({ envio: 'Seleccioná una opción de envío para continuar' });
                         return;
                       }
-                      if (envioSeleccionado.id === 'correo_sucursal' && !sucursalCorreo.trim()) {
+                      if (envioSeleccionado.tipo === 'sucursal' && !sucursalCorreo.trim()) {
                         setErrores({ sucursal: 'Por favor, ingresá la sucursal de Correo Argentino o tu localidad de preferencia' });
                         return;
                       }
