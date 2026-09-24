@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 
-const CATEGORIAS = [
+const API = process.env.REACT_APP_API_URL || '/api';
+
+const CATEGORIAS_BASE = [
   { nombre: 'Novedades', path: '/novedades' },
   {
     nombre: 'Accesorios',
@@ -32,9 +34,17 @@ const CATEGORIAS = [
       { nombre: 'Llaveros',     path: '/accesorios/llaveros' },
     ],
   },
-  { nombre: 'Colecciones',    path: '/colecciones' },
+  {
+    nombre: 'Bordados',
+    sub: [
+      { nombre: 'Pins',        path: '/bordados/pins' },
+      { nombre: 'Llaveros',    path: '/bordados/llaveros' },
+      { nombre: 'Escarapelas', path: '/bordados/escarapelas' },
+      { nombre: 'Todo',        path: '/bordados' },
+    ],
+  },
+  // Colecciones se inserta dinámicamente con su submenú
   { nombre: 'Packs por mayor',path: '/mayor' },
-  { nombre: 'Promos',         path: '/promos' },
   { nombre: 'Personalizado', path: '/personalizado' },
   { nombre: 'Sobre Nosotros', path: '/nosotros' },
   { nombre: '¿Cómo comprar?', path: '/como-comprar' },
@@ -54,11 +64,38 @@ const ChevronIcon = ({ size = 14, style }) => (
 export default function NavBar({ carritoCount, busqueda, setBusqueda }) {
   const location = useLocation();
   const esRutaLimpia = RUTAS_LIMPIAS.includes(location.pathname) || location.pathname.startsWith('/producto/');
-  const [menuAbierto, setMenuAbierto]         = useState(false);
-  const [accesoriosAbierto, setAccesoriosAbierto] = useState(false);
-  const [subAbierto, setSubAbierto]           = useState(null);
+  const [menuAbierto, setMenuAbierto]       = useState(false);
+  const [seccionAbierta, setSeccionAbierta] = useState(null);
+  const [subAbierto, setSubAbierto]         = useState(null);
+  const [colecciones, setColecciones]       = useState([]);
 
-  const cerrarMenu = () => { setMenuAbierto(false); setAccesoriosAbierto(false); setSubAbierto(null); };
+  useEffect(() => {
+    fetch(`${API}/productos/colecciones`)
+      .then(r => r.json())
+      .then(data => {
+        if (Array.isArray(data)) setColecciones(data);
+      })
+      .catch(() => {});
+  }, [menuAbierto]);
+
+  const categorias = useMemo(() => {
+    const itemColecciones = {
+      nombre: 'Colecciones',
+      sub: [
+        ...colecciones.map(c => ({
+          nombre: c.nombre,
+          path: `/colecciones?coleccion=${encodeURIComponent(c.nombre)}`,
+        })),
+        { nombre: 'Ver todas las colecciones', path: '/colecciones' },
+      ],
+    };
+
+    const lista = [...CATEGORIAS_BASE];
+    lista.splice(3, 0, itemColecciones);
+    return lista;
+  }, [colecciones]);
+
+  const cerrarMenu = () => { setMenuAbierto(false); setSeccionAbierta(null); setSubAbierto(null); };
   const toggleSub  = (nombre) => setSubAbierto(prev => prev === nombre ? null : nombre);
   const rotar      = (abierto) => ({ transform: abierto ? 'rotate(180deg)' : 'rotate(0)', transition: '0.2s' });
 
@@ -71,7 +108,7 @@ export default function NavBar({ carritoCount, busqueda, setBusqueda }) {
         </div>
       )}
 
-      <nav className="navbar">
+      <nav className={`navbar ${esRutaLimpia ? 'navbar--limpia' : ''}`}>
         <button className={`hamburger ${menuAbierto ? 'activo' : ''}`}
           onClick={() => setMenuAbierto(!menuAbierto)} aria-label="Menú">
           <span /><span /><span />
@@ -119,19 +156,22 @@ export default function NavBar({ carritoCount, busqueda, setBusqueda }) {
         </div>
 
         <ul className="menu-lista">
-          {CATEGORIAS.map(cat => (
+          {categorias.map(cat => (
             <li key={cat.nombre} className="menu-item">
               {cat.sub ? (
                 <>
                   <button
-                    className={`menu-link menu-link-sub ${accesoriosAbierto ? 'activo' : ''}`}
-                    onClick={() => { setAccesoriosAbierto(!accesoriosAbierto); setSubAbierto(null); }}
+                    className={`menu-link menu-link-sub ${seccionAbierta === cat.nombre ? 'activo' : ''}`}
+                    onClick={() => {
+                      setSeccionAbierta(prev => prev === cat.nombre ? null : cat.nombre);
+                      setSubAbierto(null);
+                    }}
                   >
                     {cat.nombre}
-                    <ChevronIcon style={rotar(accesoriosAbierto)} />
+                    <ChevronIcon style={rotar(seccionAbierta === cat.nombre)} />
                   </button>
 
-                  {accesoriosAbierto && (
+                  {seccionAbierta === cat.nombre && (
                     <ul className="submenu-lista">
                       {cat.sub.map(sub => (
                         <li key={sub.nombre}>

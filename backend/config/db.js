@@ -44,6 +44,45 @@ async function inicializarDB() {
       console.log("✅ Columna 'precio' agregada a tabla 'variantes'");
     }
 
+    // Crear tabla colecciones si no existe
+    await conn.query(`
+      CREATE TABLE IF NOT EXISTS colecciones (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        nombre VARCHAR(100) NOT NULL UNIQUE,
+        descripcion TEXT,
+        creado_en DATETIME DEFAULT CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `);
+
+    // Helper para verificar y agregar columnas a productos
+    const columnasProductos = [
+      { nombre: 'id_coleccion', def: 'INT DEFAULT NULL, ADD CONSTRAINT fk_producto_coleccion FOREIGN KEY (id_coleccion) REFERENCES colecciones(id) ON DELETE SET NULL' },
+      { nombre: 'es_por_mayor', def: 'TINYINT(1) DEFAULT 0' },
+      { nombre: 'es_novedad', def: 'TINYINT(1) DEFAULT 0' },
+      { nombre: 'es_personalizado', def: 'TINYINT(1) DEFAULT 0' },
+      { nombre: 'tipo_bordado', def: 'VARCHAR(50) DEFAULT NULL' },
+    ];
+
+    for (const col of columnasProductos) {
+      const [colsProd] = await conn.query(`
+        SELECT COUNT(*) as count 
+        FROM information_schema.COLUMNS 
+        WHERE TABLE_SCHEMA = DATABASE() 
+          AND TABLE_NAME = 'productos' 
+          AND COLUMN_NAME = ?
+      `, [col.nombre]);
+      if (colsProd[0].count === 0) {
+        try {
+          await conn.query(`ALTER TABLE productos ADD COLUMN ${col.nombre} ${col.def}`);
+          console.log(`✅ Columna '${col.nombre}' agregada a tabla 'productos'`);
+        } catch (e) {
+          // Si falla la FK por sintaxis en versiones específicas, intentar sin FK explícita
+          await conn.query(`ALTER TABLE productos ADD COLUMN ${col.nombre} ${col.def.split(',')[0]}`);
+          console.log(`✅ Columna '${col.nombre}' agregada a tabla 'productos' (sin FK inline)`);
+        }
+      }
+    }
+
     conn.release();
   } catch (err) {
     console.error("❌ Error de conexión/migración a la DB:", err.message);

@@ -18,14 +18,28 @@ function AdminProductoForm({ productoEditar, onGuardado, onCancelar }) {
   const [nuevaCategoria, setNuevaCategoria] = useState('');
   const [modalEliminarCat, setModalEliminarCat] = useState(null);
 
+  // Colecciones y Atributos Especiales
+  const [coleccionesDisponibles, setColeccionesDisponibles] = useState([]);
+  const [idColeccion, setIdColeccion] = useState('');
+  const [nuevaColeccion, setNuevaColeccion] = useState('');
+  const [mostrarNuevaCol, setMostrarNuevaCol] = useState(false);
+
+  const [esPorMayor, setEsPorMayor] = useState(false);
+  const [esNovedad, setEsNovedad] = useState(false);
+  const [esPersonalizado, setEsPersonalizado] = useState(false);
+  const [tipoBordado, setTipoBordado] = useState('');
+
   // Variantes vs Stock Simple
   const [tieneVariantes, setTieneVariantes] = useState(false);
   const [stockSimple, setStockSimple] = useState('0');
 
-  // Cargar categorías disponibles
+  // Cargar categorías y colecciones disponibles
   useEffect(() => {
     axios.get(`${API}/productos/categorias`)
       .then(res => setCategoriasDisponibles(res.data))
+      .catch(() => {});
+    axios.get(`${API}/productos/colecciones`)
+      .then(res => setColeccionesDisponibles(res.data))
       .catch(() => {});
   }, []);
 
@@ -38,6 +52,12 @@ function AdminProductoForm({ productoEditar, onGuardado, onCancelar }) {
         material: productoEditar.material || '',
         precio: productoEditar.precio || '',
       });
+
+      setIdColeccion(productoEditar.id_coleccion ? String(productoEditar.id_coleccion) : '');
+      setEsPorMayor(Boolean(productoEditar.es_por_mayor));
+      setEsNovedad(Boolean(productoEditar.es_novedad));
+      setEsPersonalizado(Boolean(productoEditar.es_personalizado));
+      setTipoBordado(productoEditar.tipo_bordado ? productoEditar.tipo_bordado.toLowerCase() : '');
 
       const detalle = productoEditar.variantes_detalle || [];
       const varsReales = detalle.filter(v => v.nombre !== 'Única');
@@ -67,6 +87,11 @@ function AdminProductoForm({ productoEditar, onGuardado, onCancelar }) {
       const cats = productoEditar.categorias || [];
       setCategoriasSeleccionadas(cats.map(c => c.id));
     } else {
+      setIdColeccion('');
+      setEsPorMayor(false);
+      setEsNovedad(false);
+      setEsPersonalizado(false);
+      setTipoBordado('');
       setTieneVariantes(false);
       setStockSimple('0');
       setVariantes([{ nombre: '', stock: '', precio: '', imagen_url: null, archivoNuevo: null, previewLocal: null }]);
@@ -133,6 +158,25 @@ function AdminProductoForm({ productoEditar, onGuardado, onCancelar }) {
       setNuevaCategoria('');
     } catch (e) {
       console.error('Error creando categoría', e);
+    }
+  };
+
+  const crearYAgregarColeccion = async () => {
+    if (!nuevaColeccion.trim()) return;
+    try {
+      const token = localStorage.getItem('admin_token');
+      const res = await axios.post(`${API}/productos/colecciones`,
+        { nombre: nuevaColeccion.trim() },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      const nueva = res.data;
+      setColeccionesDisponibles(prev => [...prev, nueva]);
+      setIdColeccion(String(nueva.id));
+      setNuevaColeccion('');
+      setMostrarNuevaCol(false);
+    } catch (e) {
+      console.error('Error creando colección', e);
+      alert(e.response?.data?.error || 'No se pudo crear la colección');
     }
   };
 
@@ -241,6 +285,11 @@ function AdminProductoForm({ productoEditar, onGuardado, onCancelar }) {
         variantes: variantesPayload,
         categorias: categoriasSeleccionadas,
         stock: stockTotal,
+        id_coleccion: idColeccion ? Number(idColeccion) : null,
+        es_por_mayor: esPorMayor ? 1 : 0,
+        es_novedad: esNovedad ? 1 : 0,
+        es_personalizado: esPersonalizado ? 1 : 0,
+        tipo_bordado: tipoBordado || null,
       };
 
       if (productoEditar) {
@@ -360,6 +409,131 @@ function AdminProductoForm({ productoEditar, onGuardado, onCancelar }) {
               <button type="button" onClick={crearYAgregarCategoria} style={estilos.btnAgregarVariante}>
                 + Agregar
               </button>
+            </div>
+          </div>
+
+          {/* Colección */}
+          <div style={{ ...estilos.campo, background: '#f8fafc', padding: '16px', borderRadius: 10, border: '1px solid #e2e8f0' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+              <label style={{ ...estilos.label, margin: 0, color: '#1e293b' }}>
+                📁 Colección <span style={estilos.hint}>(opcional)</span>
+              </label>
+              <button
+                type="button"
+                onClick={() => setMostrarNuevaCol(!mostrarNuevaCol)}
+                style={{ background: 'none', border: 'none', color: '#0284c7', cursor: 'pointer', fontSize: '0.84rem', fontWeight: 700 }}
+              >
+                {mostrarNuevaCol ? '✕ Cancelar' : '+ Crear nueva colección'}
+              </button>
+            </div>
+
+            {mostrarNuevaCol && (
+              <div style={{ display: 'flex', gap: 8, marginBottom: 10, marginTop: 6 }}>
+                <input
+                  style={{ ...estilos.input, flex: 1, margin: 0 }}
+                  placeholder="Nombre de la nueva colección (ej: Verano 2026)..."
+                  value={nuevaColeccion}
+                  onChange={e => setNuevaColeccion(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), crearYAgregarColeccion())}
+                />
+                <button type="button" onClick={crearYAgregarColeccion} style={estilos.btnAgregarVariante}>
+                  + Guardar colección
+                </button>
+              </div>
+            )}
+
+            <select
+              value={idColeccion}
+              onChange={e => setIdColeccion(e.target.value)}
+              style={estilos.input}
+            >
+              <option value="">Ninguna</option>
+              {coleccionesDisponibles.map(c => (
+                <option key={c.id} value={c.id}>{c.nombre}</option>
+              ))}
+            </select>
+            <span style={estilos.hint}>
+              Si pertenece a una colección, se mostrará en el apartado Colecciones de la página.
+            </span>
+          </div>
+
+          {/* Atributos Especiales de Navegación y Menú */}
+          <div style={{ ...estilos.campo, background: '#f8fafc', padding: '16px', borderRadius: 10, border: '1px solid #e2e8f0' }}>
+            <label style={{ ...estilos.label, color: '#1e293b', marginBottom: 12 }}>
+              🏷️ Atributos y Opciones de Menú
+            </label>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
+              {/* Packs por Mayor */}
+              <div>
+                <label style={estilos.label}>Packs por mayor</label>
+                <select
+                  value={esPorMayor ? 'si' : 'no'}
+                  onChange={e => setEsPorMayor(e.target.value === 'si')}
+                  style={estilos.input}
+                >
+                  <option value="no">Ninguna</option>
+                  <option value="si">Packs por mayor (Sí)</option>
+                </select>
+                <span style={estilos.hint}>Aparece en "Packs por mayor".</span>
+              </div>
+
+              {/* Novedades */}
+              <div>
+                <label style={estilos.label}>Novedades</label>
+                <select
+                  value={esNovedad ? 'si' : 'no'}
+                  onChange={e => setEsNovedad(e.target.value === 'si')}
+                  style={estilos.input}
+                >
+                  <option value="no">Ninguna</option>
+                  <option value="si">Novedades (Sí)</option>
+                </select>
+                <span style={estilos.hint}>Aparece en "Novedades".</span>
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+              {/* Bordado */}
+              <div>
+                <label style={estilos.label}>Bordado</label>
+                <select
+                  value={tipoBordado}
+                  onChange={e => setTipoBordado(e.target.value)}
+                  style={estilos.input}
+                >
+                  <option value="">Ninguno</option>
+                  <option value="pins">Pins</option>
+                  <option value="llaveros">Llaveros</option>
+                  <option value="escarapelas">Escarapelas</option>
+                  <option value="otro">Bordado general / Otro</option>
+                </select>
+                <span style={estilos.hint}>Aparece en "Bordados".</span>
+              </div>
+
+              {/* Personalizado */}
+              <div>
+                <label style={{ ...estilos.label, color: esPersonalizado ? '#dc2626' : '#555' }}>
+                  Personalizado {esPersonalizado && '🔒'}
+                </label>
+                <select
+                  value={esPersonalizado ? 'si' : 'no'}
+                  onChange={e => setEsPersonalizado(e.target.value === 'si')}
+                  style={{
+                    ...estilos.input,
+                    borderColor: esPersonalizado ? '#f87171' : '#ddd',
+                    background: esPersonalizado ? '#fef2f2' : 'white',
+                    color: esPersonalizado ? '#b91c1c' : '#333',
+                    fontWeight: esPersonalizado ? 700 : 'normal'
+                  }}
+                >
+                  <option value="no">Ninguna</option>
+                  <option value="si">Personalizado (SOLO en Personalizado)</option>
+                </select>
+                <span style={{ ...estilos.hint, color: esPersonalizado ? '#dc2626' : '#999' }}>
+                  {esPersonalizado ? '⚠️ Aparecerá SOLO en el apartado Personalizado.' : 'No es exclusivo de personalizado.'}
+                </span>
+              </div>
             </div>
           </div>
 

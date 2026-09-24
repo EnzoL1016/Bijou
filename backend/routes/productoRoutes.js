@@ -8,6 +8,11 @@ router.get('/categorias',        productoController.obtenerCategorias);
 router.post('/categorias',       verificarAdmin, productoController.crearCategoria);
 router.delete('/categorias/:id', verificarAdmin, productoController.eliminarCategoria);
 
+// ── Colecciones (van ANTES de /:id para no ser interceptadas) ────
+router.get('/colecciones',        productoController.obtenerColecciones);
+router.post('/colecciones',       verificarAdmin, productoController.crearColeccion);
+router.delete('/colecciones/:id', verificarAdmin, productoController.eliminarColeccion);
+
 // ── Rutas públicas ───────────────────────────────────────────────
 router.get('/',    productoController.obtenerProductos);   // acepta ?categoria=pulseras
 router.get('/:id', productoController.obtenerProductoPorId);

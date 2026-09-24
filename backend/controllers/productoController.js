@@ -42,29 +42,66 @@ async function adjuntarCategorias(productos, conn) {
 }
 
 // ─────────────────────────────────────────────
+// ─────────────────────────────────────────────
 // 1. OBTENER TODOS LOS PRODUCTOS
 // ─────────────────────────────────────────────
 exports.obtenerProductos = async (req, res) => {
   try {
-    const { categoria } = req.query; // /productos?categoria=pulseras
+    const { categoria, seccion, coleccion, subcategoria, admin } = req.query;
 
     let query = `
-      SELECT DISTINCT p.id, p.nombre, p.descripcion, p.material, p.precio, p.imagen_url
+      SELECT DISTINCT p.id, p.nombre, p.descripcion, p.material, p.precio, p.imagen_url,
+             p.id_coleccion, col.nombre AS coleccion_nombre,
+             p.es_por_mayor, p.es_novedad, p.es_personalizado, p.tipo_bordado
       FROM productos p
+      LEFT JOIN colecciones col ON col.id = p.id_coleccion
     `;
     const params = [];
+    const whereConditions = ['p.activo = 1'];
 
-    if (categoria) {
-      query += `
-        JOIN producto_categorias pc ON pc.id_producto = p.id
-        JOIN categorias c ON c.id = pc.id_categoria
-        WHERE p.activo = 1 AND LOWER(c.nombre) = LOWER(?)
-        ORDER BY p.id DESC
-      `;
-      params.push(categoria);
+    // Si es petición del admin, ve todos los productos activos (incluidos personalizados)
+    if (admin === 'true') {
+      // no filtramos es_personalizado
     } else {
-      query += `WHERE p.activo = 1 ORDER BY p.id DESC`;
+      // Peticiones públicas
+      const sec = (seccion || '').toLowerCase();
+      const cat = (categoria || '').toLowerCase();
+
+      if (sec === 'personalizado' || cat === 'personalizado') {
+        whereConditions.push('p.es_personalizado = 1');
+      } else {
+        // En cualquier otra sección pública, los productos personalizados NUNCA aparecen
+        whereConditions.push('(p.es_personalizado = 0 OR p.es_personalizado IS NULL)');
+
+        if (sec === 'colecciones' || cat === 'colecciones') {
+          whereConditions.push('p.id_coleccion IS NOT NULL');
+          if (coleccion) {
+            whereConditions.push('(LOWER(col.nombre) = LOWER(?) OR p.id_coleccion = ?)');
+            params.push(coleccion, coleccion);
+          }
+        } else if (sec === 'mayor' || cat === 'mayor' || cat === 'packs por mayor') {
+          whereConditions.push('p.es_por_mayor = 1');
+        } else if (sec === 'novedades' || cat === 'novedades') {
+          whereConditions.push('p.es_novedad = 1');
+        } else if (sec === 'bordados' || cat === 'bordados') {
+          whereConditions.push("(p.tipo_bordado IS NOT NULL AND LOWER(p.tipo_bordado) != 'ninguno' AND LOWER(p.tipo_bordado) != '')");
+          const sub = (subcategoria || '').toLowerCase();
+          if (sub) {
+            whereConditions.push('LOWER(p.tipo_bordado) = LOWER(?)');
+            params.push(sub);
+          }
+        } else if (categoria && cat !== 'todo') {
+          query += `
+            JOIN producto_categorias pc ON pc.id_producto = p.id
+            JOIN categorias c ON c.id = pc.id_categoria
+          `;
+          whereConditions.push('LOWER(c.nombre) = LOWER(?)');
+          params.push(categoria);
+        }
+      }
     }
+
+    query += ' WHERE ' + whereConditions.join(' AND ') + ' ORDER BY p.id DESC';
 
     const [productos] = await db.query(query, params);
     if (productos.length === 0) return res.json([]);
@@ -84,10 +121,19 @@ exports.obtenerProductos = async (req, res) => {
       }));
       const imagenes = parsearImagenes(p.imagen_url);
       return {
-        id: p.id, nombre: p.nombre, descripcion: p.descripcion,
-        material: p.material, precio: Number(p.precio),
+        id: p.id,
+        nombre: p.nombre,
+        descripcion: p.descripcion,
+        material: p.material,
+        precio: Number(p.precio),
         imagen_url: imagenes,
         imagenes: Array.isArray(imagenes) ? imagenes : [imagenes],
+        id_coleccion: p.id_coleccion || null,
+        coleccion_nombre: p.coleccion_nombre || null,
+        es_por_mayor: Boolean(p.es_por_mayor),
+        es_novedad: Boolean(p.es_novedad),
+        es_personalizado: Boolean(p.es_personalizado),
+        tipo_bordado: p.tipo_bordado || null,
         stock: varsDelProducto.reduce((sum, v) => sum + v.stock, 0),
         variantes: varsDelProducto.map(v => v.nombre),
         variantes_detalle: varsDelProducto,
@@ -110,8 +156,12 @@ exports.obtenerProductoPorId = async (req, res) => {
   try {
     const { id } = req.params;
     const [rows] = await db.query(`
-      SELECT id, nombre, descripcion, material, precio, imagen_url
-      FROM productos WHERE id = ? AND activo = 1
+      SELECT p.id, p.nombre, p.descripcion, p.material, p.precio, p.imagen_url,
+             p.id_coleccion, col.nombre AS coleccion_nombre,
+             p.es_por_mayor, p.es_novedad, p.es_personalizado, p.tipo_bordado
+      FROM productos p
+      LEFT JOIN colecciones col ON col.id = p.id_coleccion
+      WHERE p.id = ? AND p.activo = 1
     `, [id]);
 
     if (rows.length === 0) return res.status(404).json({ error: 'Producto no encontrado' });
@@ -136,10 +186,19 @@ exports.obtenerProductoPorId = async (req, res) => {
     }));
 
     res.json({
-      id: p.id, nombre: p.nombre, descripcion: p.descripcion,
-      material: p.material, precio: Number(p.precio),
+      id: p.id,
+      nombre: p.nombre,
+      descripcion: p.descripcion,
+      material: p.material,
+      precio: Number(p.precio),
       imagen_url: imagenes,
       imagenes: Array.isArray(imagenes) ? imagenes : [imagenes],
+      id_coleccion: p.id_coleccion || null,
+      coleccion_nombre: p.coleccion_nombre || null,
+      es_por_mayor: Boolean(p.es_por_mayor),
+      es_novedad: Boolean(p.es_novedad),
+      es_personalizado: Boolean(p.es_personalizado),
+      tipo_bordado: p.tipo_bordado || null,
       stock: variantesMapeadas.reduce((sum, v) => sum + v.stock, 0),
       variantes: variantesMapeadas.map(v => v.nombre),
       variantes_detalle: variantesMapeadas,
@@ -159,15 +218,32 @@ exports.crearProducto = async (req, res) => {
   try {
     await conn.beginTransaction();
 
-    const { nombre, descripcion, material, precio, imagenes, variantes, stock, categorias } = req.body;
+    const {
+      nombre, descripcion, material, precio, imagenes, variantes, stock, categorias,
+      id_coleccion, es_por_mayor, es_novedad, es_personalizado, tipo_bordado
+    } = req.body;
 
     let arrayImagenes = Array.isArray(imagenes) ? imagenes
       : (typeof imagenes === 'string' && imagenes.trim() ? imagenes.split(',').map(i => i.trim()) : []);
 
+    const bordadoLimpio = (tipo_bordado && tipo_bordado !== 'ninguno') ? tipo_bordado.toLowerCase().trim() : null;
+    const coleccionValida = id_coleccion && !isNaN(Number(id_coleccion)) && Number(id_coleccion) > 0 ? Number(id_coleccion) : null;
+
     const [result] = await conn.query(`
-      INSERT INTO productos (nombre, descripcion, material, precio, imagen_url)
-      VALUES (?, ?, ?, ?, ?)
-    `, [nombre, descripcion, material || null, precio, JSON.stringify(arrayImagenes)]);
+      INSERT INTO productos (nombre, descripcion, material, precio, imagen_url, id_coleccion, es_por_mayor, es_novedad, es_personalizado, tipo_bordado)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `, [
+      nombre,
+      descripcion,
+      material || null,
+      precio,
+      JSON.stringify(arrayImagenes),
+      coleccionValida,
+      es_por_mayor ? 1 : 0,
+      es_novedad ? 1 : 0,
+      es_personalizado ? 1 : 0,
+      bordadoLimpio
+    ]);
 
     const idProducto = result.insertId;
 
@@ -205,14 +281,35 @@ exports.editarProducto = async (req, res) => {
     await conn.beginTransaction();
 
     const { id } = req.params;
-    const { nombre, descripcion, material, precio, imagenes, variantes, stock, categorias } = req.body;
+    const {
+      nombre, descripcion, material, precio, imagenes, variantes, stock, categorias,
+      id_coleccion, es_por_mayor, es_novedad, es_personalizado, tipo_bordado
+    } = req.body;
 
     let arrayImagenes = Array.isArray(imagenes) ? imagenes
       : (typeof imagenes === 'string' && imagenes.trim() ? imagenes.split(',').map(i => i.trim()) : []);
 
+    const bordadoLimpio = (tipo_bordado && tipo_bordado !== 'ninguno') ? tipo_bordado.toLowerCase().trim() : null;
+    const coleccionValida = id_coleccion && !isNaN(Number(id_coleccion)) && Number(id_coleccion) > 0 ? Number(id_coleccion) : null;
+
     const [result] = await conn.query(`
-      UPDATE productos SET nombre=?, descripcion=?, material=?, precio=?, imagen_url=? WHERE id=?
-    `, [nombre, descripcion, material || null, precio, JSON.stringify(arrayImagenes), id]);
+      UPDATE productos
+      SET nombre=?, descripcion=?, material=?, precio=?, imagen_url=?,
+          id_coleccion=?, es_por_mayor=?, es_novedad=?, es_personalizado=?, tipo_bordado=?
+      WHERE id=?
+    `, [
+      nombre,
+      descripcion,
+      material || null,
+      precio,
+      JSON.stringify(arrayImagenes),
+      coleccionValida,
+      es_por_mayor ? 1 : 0,
+      es_novedad ? 1 : 0,
+      es_personalizado ? 1 : 0,
+      bordadoLimpio,
+      id
+    ]);
 
     if (result.affectedRows === 0) {
       await conn.rollback();
@@ -323,6 +420,56 @@ exports.eliminarCategoria = async (req, res) => {
   } catch (error) {
     console.error('❌ Error en eliminarCategoria:', error);
     res.status(500).json({ error: 'Error al eliminar categoría' });
+  }
+};
+
+// ─────────────────────────────────────────────
+// 10. COLECCIONES CRUD
+// ─────────────────────────────────────────────
+exports.obtenerColecciones = async (req, res) => {
+  try {
+    const [cols] = await db.query(`
+      SELECT c.id, c.nombre, c.descripcion, c.creado_en,
+             COUNT(p.id) as cantidad_productos
+      FROM colecciones c
+      LEFT JOIN productos p ON p.id_coleccion = c.id AND p.activo = 1
+      GROUP BY c.id
+      ORDER BY c.nombre ASC
+    `);
+    res.json(cols);
+  } catch (error) {
+    console.error('❌ Error en obtenerColecciones:', error);
+    res.status(500).json({ error: 'Error al obtener colecciones' });
+  }
+};
+
+exports.crearColeccion = async (req, res) => {
+  try {
+    const { nombre, descripcion } = req.body;
+    if (!nombre?.trim()) return res.status(400).json({ error: 'Nombre requerido' });
+    const [result] = await db.query(
+      `INSERT INTO colecciones (nombre, descripcion) VALUES (?, ?)`,
+      [nombre.trim(), descripcion?.trim() || null]
+    );
+    res.status(201).json({ id: result.insertId, nombre: nombre.trim(), descripcion: descripcion?.trim() || null });
+  } catch (error) {
+    if (error.code === 'ER_DUP_ENTRY') {
+      return res.status(400).json({ error: 'Ya existe una colección con ese nombre' });
+    }
+    console.error('❌ Error en crearColeccion:', error);
+    res.status(500).json({ error: 'Error al crear colección' });
+  }
+};
+
+exports.eliminarColeccion = async (req, res) => {
+  try {
+    const { id } = req.params;
+    await db.query(`UPDATE productos SET id_coleccion = NULL WHERE id_coleccion = ?`, [id]);
+    await db.query(`DELETE FROM colecciones WHERE id = ?`, [id]);
+    res.json({ message: 'Colección eliminada' });
+  } catch (error) {
+    console.error('❌ Error en eliminarColeccion:', error);
+    res.status(500).json({ error: 'Error al eliminar colección' });
   }
 };
 

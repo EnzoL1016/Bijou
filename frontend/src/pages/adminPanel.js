@@ -62,7 +62,10 @@ function TabProductos({ productos, onEditar, onEliminar }) {
             return (
               <tr key={prod.id} style={E.tr}>
                 <td style={E.td}>
-                  <img src={img ? `/productos/${img}` : '/placeholder.jpg'} alt={prod.nombre}
+                  <img src={img ? `/productos/${img}` : '/placeholder.svg'} alt={prod.nombre}
+                    onError={(event) => {
+                      if (!event.currentTarget.src.endsWith('/placeholder.svg')) event.currentTarget.src = '/placeholder.svg';
+                    }}
                     style={{ width: 52, height: 52, objectFit: 'cover', borderRadius: 8, border: '1px solid #e2e8f0' }} />
                 </td>
                 <td style={E.td}>

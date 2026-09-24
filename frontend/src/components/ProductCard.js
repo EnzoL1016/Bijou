@@ -14,9 +14,14 @@ function ProductCard({ prod, manejarClickBoton, mostrarExito, tieneVariantes }) 
     <div className="producto-card">
       <div className="image-container">
         <img
-          src={imagenes.length > 0 ? `/productos/${imagenes[0]}` : '/placeholder.jpg'}
+          src={imagenes.length > 0 ? `/productos/${imagenes[0]}` : '/placeholder.svg'}
           className="product-img"
           alt={prod.nombre}
+          onError={(event) => {
+            if (!event.currentTarget.src.endsWith('/placeholder.svg')) {
+              event.currentTarget.src = '/placeholder.svg';
+            }
+          }}
           style={sinStock ? { filter: 'grayscale(0.4)', opacity: 0.85 } : {}}
         />
         {sinStock && (

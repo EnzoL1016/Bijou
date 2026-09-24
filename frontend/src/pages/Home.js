@@ -9,9 +9,10 @@ const API = process.env.REACT_APP_API_URL || '/api';
 const slides = [
   {
     id: 1,
-    titulo: 'Nueva Colección 2025',
+    titulo: 'Nueva Colección 2026',
     subtitulo: 'Accesorios únicos hechos a mano',
     cta: 'Ver colección',
+    path: '/colecciones',
     bg: 'linear-gradient(135deg, #0ea5e9 0%, #06b6d4 60%, #0d9488 100%)',
     imagen: null,
   },
@@ -20,6 +21,7 @@ const slides = [
     titulo: 'Packs por Mayor',
     subtitulo: 'Precios especiales para revendedoras',
     cta: 'Ver packs',
+    path: '/mayor',
     bg: 'linear-gradient(135deg, #0d9488 0%, #0ea5e9 100%)',
     imagen: null,
   },
@@ -28,19 +30,31 @@ const slides = [
     titulo: '¡Promos de la semana!',
     subtitulo: 'Descuentos exclusivos por tiempo limitado',
     cta: 'Ver promos',
+    path: '/promos',
     bg: 'linear-gradient(135deg, #06b6d4 0%, #7dd3fc 100%)',
     imagen: null,
   },
 ];
 
-function SeccionCarrusel({ titulo, sub, path, productos, slide, setSlide, manejarAccionProducto, idProductoExito, tieneVariantesReales }) {
-  const VISIBLE = 4;
-  const maxSlide = Math.max(0, productos.length - VISIBLE);
+function SeccionCarrusel({ titulo, sub, path, productos, slide, setSlide, manejarAccionProducto, idProductoExito, tieneVariantesReales, tono }) {
+  const [visibleItems, setVisibleItems] = useState(() => window.innerWidth <= 480 ? 1 : window.innerWidth <= 768 ? 2 : 4);
+  useEffect(() => {
+    const actualizarVisible = () => setVisibleItems(window.innerWidth <= 480 ? 1 : window.innerWidth <= 768 ? 2 : 4);
+    window.addEventListener('resize', actualizarVisible);
+    return () => window.removeEventListener('resize', actualizarVisible);
+  }, []);
+
+  const maxSlide = Math.max(0, productos.length - visibleItems);
+  const espacioPorPaso = visibleItems === 4 ? 4 : visibleItems === 2 ? 8 : 16;
   const prev = () => setSlide(s => Math.max(0, s - 1));
   const next = () => setSlide(s => Math.min(maxSlide, s + 1));
 
+  useEffect(() => {
+    setSlide(s => Math.min(s, maxSlide));
+  }, [maxSlide, setSlide]);
+
   return (
-    <div className="container-tienda" style={{ paddingTop: '10px' }}>
+    <div className={`container-tienda container-tienda--${tono}`} style={{ paddingTop: '10px' }}>
       <div className="seccion-titulo">
         <div className="seccion-titulo-texto">
           <h2>{titulo}</h2>
@@ -59,7 +73,7 @@ function SeccionCarrusel({ titulo, sub, path, productos, slide, setSlide, maneja
       </div>
 
       <div className="sec-carrusel-viewport">
-        <div className="sec-carrusel-track" style={{ transform: `translateX(calc(-${slide} * (100% / ${VISIBLE} + 4px)))` }}>
+        <div className="sec-carrusel-track" style={{ transform: `translateX(calc(-${slide * (100 / visibleItems)}% - ${slide * espacioPorPaso}px))` }}>
           {productos.map((p, i) => (
             <div key={p.id ?? i} className="sec-carrusel-item">
               <ProductCard prod={p}
@@ -131,18 +145,18 @@ function Home({ agregarAlCarrito, busqueda }) {
     (p.nombre || '').toLowerCase().includes((busqueda || '').toLowerCase())
   );
 
-  // Filtrar por categoría real
+  // Filtrar productos para cada sección
   const tieneCategoria = (prod, nombre) =>
     (prod.categorias || []).some(c => c.nombre?.toLowerCase() === nombre.toLowerCase());
 
-  const prodNovedades   = productos.filter(p => tieneCategoria(p, 'Novedades')).slice(0, 4);
-  const prodColecciones = productos.filter(p => tieneCategoria(p, 'Colecciones')).slice(0, 4);
-  const prodTodo        = productos.slice(0, 4); // muestra los primeros 4 de todo el catálogo
+  const prodNovedades   = productos.filter(p => Boolean(p.es_novedad) || tieneCategoria(p, 'Novedades'));
+  const prodColecciones = productos.filter(p => (p.id_coleccion !== null && p.id_coleccion !== undefined) || tieneCategoria(p, 'Colecciones'));
+  const prodTodo        = productos.slice(0, 8); // muestra los primeros de todo el catálogo
 
   return (
     <>
       {busqueda ? (
-        <div className="container-tienda">
+        <div className="container-tienda container-tienda--sky">
           <div className="seccion-titulo">
             <div className="seccion-titulo-texto">
               <h2>Resultados para "{busqueda}"</h2>
@@ -178,7 +192,7 @@ function Home({ agregarAlCarrito, busqueda }) {
                     <div className="carrusel-tag">Lody Arte</div>
                     <h2 className="carrusel-titulo">{slide.titulo}</h2>
                     <p className="carrusel-subtitulo">{slide.subtitulo}</p>
-                    <button className="carrusel-cta">{slide.cta} →</button>
+                    <Link className="carrusel-cta" to={slide.path}>{slide.cta} →</Link>
                   </div>
                   <div className="carrusel-shapes">
                     <div className="cs cs-1"></div>
@@ -232,7 +246,7 @@ function Home({ agregarAlCarrito, busqueda }) {
           {/* NOVEDADES — carrusel */}
           {prodNovedades.length > 0 && (
             <SeccionCarrusel
-              titulo="Novedades" sub="Lo último que llegó" path="/novedades"
+              titulo="Novedades" sub="Lo último que llegó" path="/novedades" tono="lila"
               productos={prodNovedades} slide={slideNovedades} setSlide={setSlideNovedades}
               manejarAccionProducto={manejarAccionProducto} idProductoExito={idProductoExito}
               tieneVariantesReales={tieneVariantesReales}
@@ -242,7 +256,7 @@ function Home({ agregarAlCarrito, busqueda }) {
           {/* COLECCIONES — carrusel */}
           {prodColecciones.length > 0 && (
             <SeccionCarrusel
-              titulo="Colecciones" sub="Nuestras piezas favoritas" path="/colecciones"
+              titulo="Colecciones" sub="Nuestras piezas favoritas" path="/colecciones" tono="mint"
               productos={prodColecciones} slide={slideColecciones} setSlide={setSlideColecciones}
               manejarAccionProducto={manejarAccionProducto} idProductoExito={idProductoExito}
               tieneVariantesReales={tieneVariantesReales}
@@ -251,7 +265,7 @@ function Home({ agregarAlCarrito, busqueda }) {
 
           {/* TODO — grid normal */}
           {prodTodo.length > 0 && (
-            <div className="container-tienda" style={{ paddingTop: '10px' }}>
+            <div className="container-tienda container-tienda--sky" style={{ paddingTop: '10px' }}>
               <div className="seccion-titulo">
                 <div className="seccion-titulo-texto">
                   <h2>Todo</h2>

@@ -40,7 +40,7 @@ export default function Footer() {
             <li><Link to="/accesorios/tobilleras">Tobilleras</Link></li>
             <li><Link to="/accesorios/aros">Aros</Link></li>
             <li><Link to="/colecciones">Colecciones</Link></li>
-            <li><Link to="/promos">Promos</Link></li>
+            <li><Link to="/bordados">Bordados</Link></li>
           </ul>
         </div>
 

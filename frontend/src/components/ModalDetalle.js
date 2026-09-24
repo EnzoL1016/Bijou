@@ -53,7 +53,7 @@ function ModalDetalle({ prod, cerrar, agregarAlCarrito }) {
   const imgVariante = tieneVariantes && variante ? getImagenVariante(variante) : null;
   const imagenSrc = imgVariante
     ? `/productos/${imgVariante}`
-    : (prod.imagenes?.length > 0 ? `/productos/${prod.imagenes[0]}` : '/placeholder.jpg');
+    : (prod.imagenes?.length > 0 ? `/productos/${prod.imagenes[0]}` : '/placeholder.svg');
 
   const manejarAgregar = () => {
     if (sinStock) return;
@@ -71,6 +71,9 @@ function ModalDetalle({ prod, cerrar, agregarAlCarrito }) {
           <img
             src={imagenSrc}
             alt={prod.nombre}
+            onError={(event) => {
+              if (!event.currentTarget.src.endsWith('/placeholder.svg')) event.currentTarget.src = '/placeholder.svg';
+            }}
             style={sinStock ? { filter: 'grayscale(0.35)', opacity: 0.88 } : {}}
           />
         </div>

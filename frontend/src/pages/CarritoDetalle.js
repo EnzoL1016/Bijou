@@ -15,7 +15,7 @@ function CarritoDetalle({ carrito, actualizarCantidad, eliminarDelCarrito }) {
       const v = item.variantes_detalle.find(vd => vd.nombre === item.varianteSeleccionada);
       if (v && v.imagen_url) return `/productos/${v.imagen_url}`;
     }
-    return item.imagenes && item.imagenes.length > 0 ? `/productos/${item.imagenes[0]}` : '/placeholder.jpg';
+    return item.imagenes && item.imagenes.length > 0 ? `/productos/${item.imagenes[0]}` : '/placeholder.svg';
   };
 
   return (
@@ -53,6 +53,9 @@ function CarritoDetalle({ carrito, actualizarCantidad, eliminarDelCarrito }) {
                   src={getImagenItem(item)}
                   alt={item.nombre}
                   className="carrito-img"
+                  onError={(event) => {
+                    if (!event.currentTarget.src.endsWith('/placeholder.svg')) event.currentTarget.src = '/placeholder.svg';
+                  }}
                 />
 
                 <div className="carrito-info">

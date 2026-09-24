@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useLocation, Link } from 'react-router-dom';
 import './App.css';
 import NavBar from './components/NavBar';
 import Footer from './components/footer';
@@ -59,24 +59,28 @@ function AppContent({ carrito, setCarrito, agregarAlCarrito, actualizarCantidad,
         <Route path="/compra-error" element={<CompraError />} />
 
         {/* Categorías */}
-        <Route path="/todo" element={<Categoria agregarAlCarrito={agregarAlCarrito} />} />
-        <Route path="/novedades" element={<Categoria agregarAlCarrito={agregarAlCarrito} />} />
-        <Route path="/colecciones" element={<Categoria agregarAlCarrito={agregarAlCarrito} />} />
-        <Route path="/mayor" element={<Categoria agregarAlCarrito={agregarAlCarrito} />} />
-        <Route path="/promos" element={<Categoria agregarAlCarrito={agregarAlCarrito} />} />
-        <Route path="/accesorios/:subcategoria" element={<Categoria agregarAlCarrito={agregarAlCarrito} />} />
-        <Route path="/accesorios/:subcategoria/:subsubcategoria" element={<Categoria agregarAlCarrito={agregarAlCarrito} />} />
+        <Route path="/todo" element={<Categoria agregarAlCarrito={agregarAlCarrito} busqueda={busqueda} />} />
+        <Route path="/novedades" element={<Categoria agregarAlCarrito={agregarAlCarrito} busqueda={busqueda} />} />
+        <Route path="/promos" element={<Categoria agregarAlCarrito={agregarAlCarrito} busqueda={busqueda} />} />
+        <Route path="/colecciones" element={<Categoria agregarAlCarrito={agregarAlCarrito} busqueda={busqueda} />} />
+        <Route path="/colecciones/:subcategoria" element={<Categoria agregarAlCarrito={agregarAlCarrito} busqueda={busqueda} />} />
+        <Route path="/mayor" element={<Categoria agregarAlCarrito={agregarAlCarrito} busqueda={busqueda} />} />
+        <Route path="/bordados" element={<Categoria agregarAlCarrito={agregarAlCarrito} busqueda={busqueda} />} />
+        <Route path="/bordados/:subcategoria" element={<Categoria agregarAlCarrito={agregarAlCarrito} busqueda={busqueda} />} />
+        <Route path="/accesorios/:subcategoria" element={<Categoria agregarAlCarrito={agregarAlCarrito} busqueda={busqueda} />} />
+        <Route path="/accesorios/:subcategoria/:subsubcategoria" element={<Categoria agregarAlCarrito={agregarAlCarrito} busqueda={busqueda} />} />
 
         {/* Páginas estáticas */}
         <Route path="/nosotros" element={<Nosotros />} />
         <Route path="/como-comprar" element={<ComoComprar />} />
         <Route path="/envios" element={<Envios />} />
         <Route path="/contacto" element={<Contacto />} />
-        <Route path="/personalizado" element={<Personalizado />} />
+        <Route path="/personalizado" element={<Personalizado agregarAlCarrito={agregarAlCarrito} />} />
 
         {/* Admin */}
         <Route path="/admin/login" element={<AdminLogin />} />
         <Route path="/admin" element={<PrivateRoute><AdminPanel /></PrivateRoute>} />
+        <Route path="*" element={<main className="pagina-no-encontrada"><h1>No encontramos esta página</h1><p>El enlace puede haber cambiado o estar escrito incorrectamente.</p><Link className="btn-carrito-primary" to="/">Volver al inicio</Link></main>} />
       </Routes>
       {!esAdmin && !sinFooter && <Footer />}
     </div>
@@ -85,8 +89,13 @@ function AppContent({ carrito, setCarrito, agregarAlCarrito, actualizarCantidad,
 
 function App() {
   const [carrito, setCarrito] = useState(() => {
-    const guardado = localStorage.getItem('carrito_lody');
-    return guardado ? JSON.parse(guardado) : [];
+    try {
+      const guardado = localStorage.getItem('carrito_lody');
+      const carritoGuardado = guardado ? JSON.parse(guardado) : [];
+      return Array.isArray(carritoGuardado) ? carritoGuardado : [];
+    } catch {
+      return [];
+    }
   });
   const [busqueda, setBusqueda] = useState('');
 
